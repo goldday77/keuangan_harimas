@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Keuangan Harimas · Smart Tracker</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
@@ -10,22 +10,37 @@
 <style>
   :root { --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --border: #1e1e2e; --border2: #2a2a3e; --accent: #6c63ff; --accent2: #a78bfa; --success: #34d399; --danger: #f87171; --warning: #fbbf24; --text: #e8e8f0; --text2: #8888a8; --text3: #4a4a6a; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
   
   #welcome-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
   .logo-anim { font-size: 32px; font-weight: 800; margin-bottom: 30px; letter-spacing: -0.5px; animation: pulse 2s infinite; }
   @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.8; transform: scale(0.98); } }
   
   .nav-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.85); border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
-  .page { display: none; padding: 76px 16px 100px; max-width: 500px; margin: 0 auto; animation: fadeIn 0.4s ease; }
+  .page { display: none; padding: 76px 16px 100px; max-width: 500px; margin: 0 auto; animation: fadeIn 0.4s ease; width: 100%; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .page.active { display: block; }
   
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); width: 100%; }
   .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; }
   .btn-primary:active { transform: scale(0.98); }
   
-  .form-control { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px; padding: 14px 18px; color: var(--text); outline: none; margin-bottom: 12px; }
+  /* PERBAIKAN DI SINI: Memastikan elemen input tidak melebihi lebar kartu */
+  .form-control { 
+    width: 100%; 
+    max-width: 100%;
+    box-sizing: border-box; 
+    background: var(--surface2); 
+    border: 1px solid var(--border2); 
+    border-radius: 16px; 
+    padding: 14px 18px; 
+    color: var(--text); 
+    outline: none; 
+    margin-bottom: 12px;
+    display: block;
+    appearance: none; /* Menghilangkan style default browser */
+    -webkit-appearance: none;
+  }
   
   .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.92); border-top: 1px solid var(--border); display: flex; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); }
   .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); font-size: 11px; cursor: pointer; }
@@ -74,7 +89,6 @@
   </div>
 </div>
 
-<!-- PAGE ADD, TRANSACTIONS, SETTINGS TETAP SAMA -->
 <div class="page" id="page-add">
   <div class="card">
     <div style="display:flex; gap:12px; margin-bottom:20px">
@@ -128,7 +142,7 @@ const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Be
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Kopi Kantor':'☕','Iuran Kantor':'🤝','Sedekah':'🤲','Biaya Admin Bank':'💳'};
 
-let transactions = [], budgets = {}, gasUrl = '';
+let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense';
 
 async function enterApp() {
   const btn = document.getElementById('btnEnterApp');
@@ -200,21 +214,18 @@ function renderDashboard() {
     if (isObligation) {
         if (spent < target) {
             color = 'var(--warning)';
-            warningMsg = '<span class="warning-badge" style="background:rgba(251,191,36,0.1); color:var(--warning); border-color:rgba(251,191,36,0.3)">Belum Terpenuhi</span>';
-            alertIconHtml = '<span class="alert-icon" style="background:var(--warning); color:var(--bg)">!</span>';
-        } else {
-            color = 'var(--success)';
-        }
+            warningMsg = `<span class="warning-badge" style="background:rgba(251,191,36,0.1); color:var(--warning); border-color:rgba(251,191,36,0.3)">Belum Terpenuhi</span>`;
+            alertIconHtml = `<span class="alert-icon" style="background:var(--warning); color:var(--bg)">!</span>`;
+        } else { color = 'var(--success)'; }
     } else {
-        // Logika Budget Biasa (80% & 100%)
         if (pctVal >= 100) {
             color = 'var(--danger)';
-            warningMsg = '<span class="warning-badge" style="background:rgba(248,113,113,0.1); color:var(--danger); border-color:rgba(248,113,113,0.3)">Over Budget</span>';
-            alertIconHtml = '<span class="alert-icon" style="background:var(--danger); color:white">!</span>';
+            warningMsg = `<span class="warning-badge" style="background:rgba(248,113,113,0.1); color:var(--danger); border-color:rgba(248,113,113,0.3)">Over Budget</span>`;
+            alertIconHtml = `<span class="alert-icon" style="background:var(--danger); color:white">!</span>`;
         } else if (pctVal >= 80) {
             color = 'var(--warning)';
-            warningMsg = '<span class="warning-badge" style="background:rgba(251,191,36,0.1); color:var(--warning); border-color:rgba(251,191,36,0.3)">Mendekati Limit</span>';
-            alertIconHtml = '<span class="alert-icon" style="background:var(--warning); color:var(--bg)">!</span>';
+            warningMsg = `<span class="warning-badge" style="background:rgba(251,191,36,0.1); color:var(--warning); border-color:rgba(251,191,36,0.3)">Mendekati Limit</span>`;
+            alertIconHtml = `<span class="alert-icon" style="background:var(--warning); color:var(--bg)">!</span>`;
         }
     }
 
@@ -235,11 +246,9 @@ function renderDashboard() {
         </div>
       </div>`;
   });
-  
   renderTxList(transactions.slice(0, 5), 'recentTxList');
 }
 
-// FUNGSI LAINNYA TETAP SAMA SEPERTI SEBELUMNYA
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
@@ -290,7 +299,6 @@ async function saveBudgets() {
   if(success) showToast('✓ Budget Cloud Diperbarui');
   renderDashboard();
 }
-let currentType = 'expense';
 function setType(t) {
   currentType = t;
   document.getElementById('btn-exp').style.opacity = t === 'expense' ? '1' : '0.5';
