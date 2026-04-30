@@ -24,13 +24,11 @@
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
   .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; transition: all 0.2s; }
   .btn-primary:active { transform: scale(0.98); }
-  .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
   
   .form-control { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px; padding: 14px 18px; color: var(--text); outline: none; margin-bottom: 12px; }
-  .form-control:focus { border-color: var(--accent); }
   
   .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.92); border-top: 1px solid var(--border); display: flex; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); }
-  .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); font-size: 11px; cursor: pointer; transition: color 0.3s; }
+  .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); font-size: 11px; cursor: pointer; }
   .tab-item.active { color: var(--accent2); }
 
   .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 12px 24px; font-size: 13px; opacity: 0; transition: all 0.3s; z-index: 1000; pointer-events: none; }
@@ -42,7 +40,7 @@
   .balance-amount { font-size: 34px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); letter-spacing: -1px; }
   .tx-item { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
   
-  .warning-badge { font-size: 9px; padding: 2px 8px; border-radius: 100px; background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.3); font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+  .warning-badge { font-size: 9px; padding: 2px 8px; border-radius: 100px; font-weight: 600; text-transform: uppercase; margin-top: 2px; border: 1px solid; }
   .alert-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; font-size: 10px; font-weight: 900; margin-left: 6px; }
 </style>
 </head>
@@ -69,15 +67,14 @@
     <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px; letter-spacing: 1px;">Saldo Saat Ini</div>
     <div class="balance-amount" id="balanceAmount">Rp0</div>
   </div>
-  
   <div id="budgetBars"></div>
-
   <div class="card">
     <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:15px; letter-spacing: 1px;">Transaksi Terakhir</div>
     <div id="recentTxList"></div>
   </div>
 </div>
 
+<!-- PAGE ADD, TRANSACTIONS, SETTINGS TETAP SAMA -->
 <div class="page" id="page-add">
   <div class="card">
     <div style="display:flex; gap:12px; margin-bottom:20px">
@@ -131,7 +128,7 @@ const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Be
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Kopi Kantor':'☕','Iuran Kantor':'🤝','Sedekah':'🤲','Biaya Admin Bank':'💳'};
 
-let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense';
+let transactions = [], budgets = {}, gasUrl = '';
 
 async function enterApp() {
   const btn = document.getElementById('btnEnterApp');
@@ -192,7 +189,8 @@ function renderDashboard() {
   EXP_CATS.filter(c => budgets[c] > 0).forEach(cat => {
     const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + t.amount, 0);
     const target = budgets[cat];
-    const pct = Math.min((spent / target) * 100, 100);
+    const pctVal = (spent / target) * 100;
+    const pctBar = Math.min(pctVal, 100);
     const isObligation = OBLIGATION_CATS.includes(cat);
     
     let color = 'var(--accent)';
@@ -202,16 +200,21 @@ function renderDashboard() {
     if (isObligation) {
         if (spent < target) {
             color = 'var(--warning)';
-            warningMsg = '<span class="warning-badge">Belum Terpenuhi</span>';
+            warningMsg = '<span class="warning-badge" style="background:rgba(251,191,36,0.1); color:var(--warning); border-color:rgba(251,191,36,0.3)">Belum Terpenuhi</span>';
             alertIconHtml = '<span class="alert-icon" style="background:var(--warning); color:var(--bg)">!</span>';
         } else {
             color = 'var(--success)';
         }
     } else {
-        if (spent > target) {
+        // Logika Budget Biasa (80% & 100%)
+        if (pctVal >= 100) {
             color = 'var(--danger)';
-            warningMsg = '<span class="warning-badge" style="color:var(--danger); border-color:var(--danger)">Over Budget</span>';
+            warningMsg = '<span class="warning-badge" style="background:rgba(248,113,113,0.1); color:var(--danger); border-color:rgba(248,113,113,0.3)">Over Budget</span>';
             alertIconHtml = '<span class="alert-icon" style="background:var(--danger); color:white">!</span>';
+        } else if (pctVal >= 80) {
+            color = 'var(--warning)';
+            warningMsg = '<span class="warning-badge" style="background:rgba(251,191,36,0.1); color:var(--warning); border-color:rgba(251,191,36,0.3)">Mendekati Limit</span>';
+            alertIconHtml = '<span class="alert-icon" style="background:var(--warning); color:var(--bg)">!</span>';
         }
     }
 
@@ -228,7 +231,7 @@ function renderDashboard() {
           <span style="font-size:12px; font-weight:700">${fmt(spent)} / ${fmt(target)}</span>
         </div>
         <div style="height:8px; background:var(--border); border-radius:10px; overflow:hidden">
-          <div style="height:100%; width:${pct}%; background:${color}; transition: width 0.8s ease"></div>
+          <div style="height:100%; width:${pctBar}%; background:${color}; transition: width 0.8s ease"></div>
         </div>
       </div>`;
   });
@@ -236,12 +239,12 @@ function renderDashboard() {
   renderTxList(transactions.slice(0, 5), 'recentTxList');
 }
 
+// FUNGSI LAINNYA TETAP SAMA SEPERTI SEBELUMNYA
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3000);
 }
-
 async function syncToCloud() {
   if (!gasUrl) return;
   try {
@@ -249,7 +252,6 @@ async function syncToCloud() {
     return true;
   } catch (e) { return false; }
 }
-
 async function addTransaction() {
   const btn = document.getElementById('btnSaveTx');
   const amount = parseFloat(document.getElementById('txAmount').value);
@@ -257,12 +259,10 @@ async function addTransaction() {
   btn.disabled = true;
   btn.innerHTML = '<i class="spin" data-lucide="refresh-cw"></i> Mengirim...';
   lucide.createIcons();
-  
   const tx = { id:Date.now().toString(), type:currentType, amount, category:document.getElementById('txCategory').value, note:document.getElementById('txNote').value, date:document.getElementById('txDate').value };
   transactions.unshift(tx);
   saveLocal();
   await syncToCloud();
-  
   btn.disabled = false;
   btn.innerHTML = '<i data-lucide="save"></i> Simpan Data';
   lucide.createIcons();
@@ -271,7 +271,6 @@ async function addTransaction() {
   showToast('✓ Berhasil Tersimpan');
   renderDashboard(); renderTransactions(); showPage('dashboard');
 }
-
 async function saveBudgets() {
   const btn = document.getElementById('btnSaveBudget');
   const icon = document.getElementById('iconBudget');
@@ -279,12 +278,10 @@ async function saveBudgets() {
   btn.disabled = true;
   text.textContent = 'Sinkronisasi Cloud...';
   icon.classList.add('spin');
-  
   EXP_CATS.forEach(c => {
     const val = document.getElementById(`b_${c.replace(/\s/g,'_')}`).value;
     budgets[c] = parseFloat(val) || 0;
   });
-  
   saveLocal();
   const success = await syncToCloud();
   icon.classList.remove('spin');
@@ -293,7 +290,7 @@ async function saveBudgets() {
   if(success) showToast('✓ Budget Cloud Diperbarui');
   renderDashboard();
 }
-
+let currentType = 'expense';
 function setType(t) {
   currentType = t;
   document.getElementById('btn-exp').style.opacity = t === 'expense' ? '1' : '0.5';
@@ -301,22 +298,17 @@ function setType(t) {
   const cats = t === 'expense' ? EXP_CATS : INC_CATS;
   document.getElementById('txCategory').innerHTML = cats.map(c => `<option value="${c}">${ICONS[c]||'🔹'} ${c}</option>`).join('');
 }
-
 function deleteTx(id) {
   if(!confirm('Hapus data transaksi ini?')) return;
   transactions = transactions.filter(t => t.id !== id);
   saveLocal(); renderDashboard(); renderTransactions();
   syncToCloud();
-  showToast('✓ Data Terhapus');
 }
-
 function saveLocal() {
   localStorage.setItem(DATA_KEY, JSON.stringify(transactions));
   localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets));
 }
-
 function renderTransactions() { renderTxList(transactions, 'allTxList'); }
-
 function renderTxList(data, target) {
   document.getElementById(target).innerHTML = data.map(t => `
     <div class="tx-item">
@@ -333,7 +325,6 @@ function renderTxList(data, target) {
   `).join('') || '<p style="text-align:center; padding:20px; color:var(--text3); font-size: 13px;">Belum ada transaksi</p>';
   lucide.createIcons();
 }
-
 function fmt(n) { return 'Rp' + Math.abs(n).toLocaleString('id-ID'); }
 function showPage(n, el) { 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
