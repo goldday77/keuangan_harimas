@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Keuangan Harimas · Secure Sync</title>
+<title>Keuangan Harimas · Smart Tracker</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --border: #1e1e2e; --border2: #2a2a3e; --accent: #6c63ff; --accent2: #a78bfa; --success: #34d399; --danger: #f87171; --text: #e8e8f0; --text2: #8888a8; --text3: #4a4a6a; }
+  :root { --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --border: #1e1e2e; --border2: #2a2a3e; --accent: #6c63ff; --accent2: #a78bfa; --success: #34d399; --danger: #f87171; --warning: #fbbf24; --text: #e8e8f0; --text2: #8888a8; --text3: #4a4a6a; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   
@@ -26,14 +26,14 @@
   .btn-primary:active { transform: scale(0.98); }
   .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
   
-  .form-control { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px; padding: 14px 18px; color: var(--text); outline: none; margin-bottom: 12px; transition: border 0.3s; }
+  .form-control { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px; padding: 14px 18px; color: var(--text); outline: none; margin-bottom: 12px; }
   .form-control:focus { border-color: var(--accent); }
   
   .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.92); border-top: 1px solid var(--border); display: flex; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); }
   .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); font-size: 11px; cursor: pointer; transition: color 0.3s; }
   .tab-item.active { color: var(--accent2); }
 
-  .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 12px 24px; font-size: 13px; opacity: 0; transition: all 0.3s; z-index: 1000; pointer-events: none; box-shadow: 0 8px 16px rgba(0,0,0,0.4); }
+  .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 12px 24px; font-size: 13px; opacity: 0; transition: all 0.3s; z-index: 1000; pointer-events: none; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   
   .spin { animation: spin 1s linear infinite; }
@@ -41,6 +41,9 @@
   
   .balance-amount { font-size: 34px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text); letter-spacing: -1px; }
   .tx-item { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  
+  .warning-badge { font-size: 9px; padding: 2px 8px; border-radius: 100px; background: rgba(251, 191, 36, 0.1); color: var(--warning); border: 1px solid rgba(251, 191, 36, 0.3); font-weight: 600; text-transform: uppercase; margin-top: 2px; }
+  .alert-icon { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; font-size: 10px; font-weight: 900; margin-left: 6px; }
 </style>
 </head>
 <body>
@@ -66,7 +69,9 @@
     <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:8px; letter-spacing: 1px;">Saldo Saat Ini</div>
     <div class="balance-amount" id="balanceAmount">Rp0</div>
   </div>
+  
   <div id="budgetBars"></div>
+
   <div class="card">
     <div style="font-size:11px;color:var(--text3);text-transform:uppercase;font-weight:700;margin-bottom:15px; letter-spacing: 1px;">Transaksi Terakhir</div>
     <div id="recentTxList"></div>
@@ -121,6 +126,7 @@
 
 <script>
 const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx', BUDGET_KEY = 'fOS_bg';
+const OBLIGATION_CATS = ['Sewa Kost', 'Kas Kantor', 'Kopi Kantor', 'Iuran Kantor', 'Sedekah'];
 const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Belanja Bulanan','Jajan','Lain-lain','Kas Kantor','Kopi Kantor','Iuran Kantor','Sedekah','Biaya Admin Bank'];
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Kopi Kantor':'☕','Iuran Kantor':'🤝','Sedekah':'🤲','Biaya Admin Bank':'💳'};
@@ -141,7 +147,6 @@ async function enterApp() {
   status.textContent = 'Mengambil data dari Google Sheets...';
 
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
-  
   if (gasUrl) {
     try {
       const res = await fetch(gasUrl + '?action=getData');
@@ -150,13 +155,7 @@ async function enterApp() {
       budgets = remote.budgets || {};
       saveLocal();
       document.getElementById('syncIndicator').style.background = '#34d399';
-      status.textContent = 'Data berhasil diperbarui!';
-    } catch (e) { 
-        status.textContent = 'Gagal sinkron. Menggunakan data offline.';
-        showToast('Koneksi Cloud Gagal'); 
-    }
-  } else {
-    status.textContent = 'Siap digunakan secara lokal.';
+    } catch (e) { showToast('Koneksi Cloud Gagal'); }
   }
 
   setTimeout(() => {
@@ -182,6 +181,61 @@ function init() {
   lucide.createIcons();
 }
 
+function renderDashboard() {
+  const inc = transactions.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
+  const exp = transactions.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+  document.getElementById('balanceAmount').textContent = fmt(inc - exp);
+  
+  const container = document.getElementById('budgetBars');
+  container.innerHTML = '';
+
+  EXP_CATS.filter(c => budgets[c] > 0).forEach(cat => {
+    const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+    const target = budgets[cat];
+    const pct = Math.min((spent / target) * 100, 100);
+    const isObligation = OBLIGATION_CATS.includes(cat);
+    
+    let color = 'var(--accent)';
+    let warningMsg = '';
+    let alertIconHtml = '';
+
+    if (isObligation) {
+        if (spent < target) {
+            color = 'var(--warning)';
+            warningMsg = '<span class="warning-badge">Belum Terpenuhi</span>';
+            alertIconHtml = '<span class="alert-icon" style="background:var(--warning); color:var(--bg)">!</span>';
+        } else {
+            color = 'var(--success)';
+        }
+    } else {
+        if (spent > target) {
+            color = 'var(--danger)';
+            warningMsg = '<span class="warning-badge" style="color:var(--danger); border-color:var(--danger)">Over Budget</span>';
+            alertIconHtml = '<span class="alert-icon" style="background:var(--danger); color:white">!</span>';
+        }
+    }
+
+    container.innerHTML += `
+      <div class="card" style="margin-bottom:10px; padding:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <div style="display:flex; flex-direction:column; gap:2px">
+            <div style="display:flex; align-items:center;">
+                <span style="font-size:13px; font-weight:600">${cat}</span>
+                ${alertIconHtml}
+            </div>
+            ${warningMsg}
+          </div>
+          <span style="font-size:12px; font-weight:700">${fmt(spent)} / ${fmt(target)}</span>
+        </div>
+        <div style="height:8px; background:var(--border); border-radius:10px; overflow:hidden">
+          <div style="height:100%; width:${pct}%; background:${color}; transition: width 0.8s ease"></div>
+        </div>
+      </div>`;
+  });
+  
+  renderTxList(transactions.slice(0, 5), 'recentTxList');
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
@@ -191,11 +245,7 @@ function showToast(msg) {
 async function syncToCloud() {
   if (!gasUrl) return;
   try {
-    await fetch(gasUrl, { 
-      method: 'POST', 
-      mode: 'no-cors', 
-      body: JSON.stringify({ action:'saveAll', transactions, budgets }) 
-    });
+    await fetch(gasUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action:'saveAll', transactions, budgets }) });
     return true;
   } catch (e) { return false; }
 }
@@ -204,7 +254,6 @@ async function addTransaction() {
   const btn = document.getElementById('btnSaveTx');
   const amount = parseFloat(document.getElementById('txAmount').value);
   if(!amount) return;
-  
   btn.disabled = true;
   btn.innerHTML = '<i class="spin" data-lucide="refresh-cw"></i> Mengirim...';
   lucide.createIcons();
@@ -212,13 +261,11 @@ async function addTransaction() {
   const tx = { id:Date.now().toString(), type:currentType, amount, category:document.getElementById('txCategory').value, note:document.getElementById('txNote').value, date:document.getElementById('txDate').value };
   transactions.unshift(tx);
   saveLocal();
-  
   await syncToCloud();
   
   btn.disabled = false;
   btn.innerHTML = '<i data-lucide="save"></i> Simpan Data';
   lucide.createIcons();
-  
   document.getElementById('txAmount').value = '';
   document.getElementById('txNote').value = '';
   showToast('✓ Berhasil Tersimpan');
@@ -229,7 +276,6 @@ async function saveBudgets() {
   const btn = document.getElementById('btnSaveBudget');
   const icon = document.getElementById('iconBudget');
   const text = document.getElementById('textBudget');
-  
   btn.disabled = true;
   text.textContent = 'Sinkronisasi Cloud...';
   icon.classList.add('spin');
@@ -241,13 +287,10 @@ async function saveBudgets() {
   
   saveLocal();
   const success = await syncToCloud();
-  
   icon.classList.remove('spin');
   btn.disabled = false;
   text.textContent = 'Simpan Budget ke Cloud';
-  
   if(success) showToast('✓ Budget Cloud Diperbarui');
-  else showToast('! Gagal Memperbarui Cloud');
   renderDashboard();
 }
 
@@ -272,20 +315,6 @@ function saveLocal() {
   localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets));
 }
 
-function renderDashboard() {
-  const inc = transactions.filter(t => t.type === 'income').reduce((s,t) => s + t.amount, 0);
-  const exp = transactions.filter(t => t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-  document.getElementById('balanceAmount').textContent = fmt(inc - exp);
-  
-  document.getElementById('budgetBars').innerHTML = EXP_CATS.filter(c => budgets[c] > 0).map(cat => {
-    const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + t.amount, 0);
-    const pct = Math.min((spent / budgets[cat]) * 100, 100);
-    return `<div class="card" style="margin-bottom:10px; padding:18px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:8px;"><span>${cat}</span><span style="font-weight:700">${fmt(spent)} / ${fmt(budgets[cat])}</span></div><div style="height:8px; background:var(--border); border-radius:10px; overflow:hidden"><div style="height:100%; width:${pct}%; background:${pct>90?'var(--danger)':'var(--accent)'}; transition: width 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275)"></div></div></div>`;
-  }).join('');
-  
-  renderTxList(transactions.slice(0, 5), 'recentTxList');
-}
-
 function renderTransactions() { renderTxList(transactions, 'allTxList'); }
 
 function renderTxList(data, target) {
@@ -306,22 +335,16 @@ function renderTxList(data, target) {
 }
 
 function fmt(n) { return 'Rp' + Math.abs(n).toLocaleString('id-ID'); }
-
 function showPage(n, el) { 
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
     document.getElementById('page-'+n).classList.add('active'); 
     document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); 
     if(el) el.classList.add('active');
-    else {
-        const tabs = document.querySelectorAll('.tab-item');
-        if(n === 'dashboard') tabs[0].classList.add('active');
-    }
     lucide.createIcons(); 
 }
-
 function saveUrl() { gasUrl = document.getElementById('gasUrl').value.trim(); localStorage.setItem(GAS_URL_KEY, gasUrl); }
 function renderBudgetSettings() { document.getElementById('budgetSettings').innerHTML = '<div style="font-size:11px;color:var(--text3);text-transform:uppercase;margin-bottom:20px;font-weight:700; letter-spacing: 1px;">Pengaturan Budget Bulanan</div>' + EXP_CATS.map(c => `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span>${c}</span><input type="number" class="form-control" style="width:135px;margin:0;padding:8px 12px" id="b_${c.replace(/\s/g,'_')}" value="${budgets[c]||0}"></div>`).join(''); }
-function clearData() { if(confirm('⚠️ PERINGATAN: Menghapus data lokal akan mengeluarkan Anda dan menghapus cache transaksi. Data di Google Sheets tetap aman. Lanjutkan?')) { localStorage.clear(); location.reload(); } }
+function clearData() { if(confirm('⚠️ Reset data lokal?')) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
 </html>
