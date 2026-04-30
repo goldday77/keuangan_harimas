@@ -66,7 +66,7 @@
     <i data-lucide="play" id="enterIcon"></i>
     <span id="enterText">Mulai Aplikasi</span>
   </button>
-  <div id="loadingStatus" style="margin-top:20px; font-size:12px; color:var(--text3); height:20px; font-weight: 500;"></div>
+  <div id="loadingStatus" style="margin-top:20px; font-size:14px; color:var(--text2); height:20px; font-weight: 500; font-style: italic;"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -139,7 +139,8 @@
 
 <script>
 const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx', BUDGET_KEY = 'fOS_bg';
-const OBLIGATION_CATS = ['Sewa Kost', 'Kas Kantor', 'Kopi Kantor', 'Iuran Kantor', 'Sedekah'];
+// Investasi sekarang masuk kategori wajib (OBLIGATION)
+const OBLIGATION_CATS = ['Investasi', 'Sewa Kost', 'Kas Kantor', 'Kopi Kantor', 'Iuran Kantor', 'Sedekah'];
 const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Belanja Bulanan','Jajan','Lain-lain','Kas Kantor','Kopi Kantor','Iuran Kantor','Sedekah','Biaya Admin Bank'];
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Kopi Kantor':'☕','Iuran Kantor':'🤝','Sedekah':'🤲','Biaya Admin Bank':'💳'};
@@ -156,8 +157,8 @@ async function enterApp() {
   icon.setAttribute('data-lucide', 'refresh-cw');
   icon.classList.add('spin');
   lucide.createIcons();
-  text.textContent = 'Menyambungkan...';
-  status.textContent = 'Mengambil data dari Google Sheets...';
+  text.textContent = 'Menganalisa...';
+  status.textContent = 'Kemana perginya uangku?'; // Teks loading baru
 
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
   if (gasUrl) {
