@@ -53,7 +53,6 @@
   .tx-icon.expense { background: rgba(248,113,113,0.1); color: var(--expense-color); }
   .tx-info { flex: 1; min-width: 0; }
   .tx-cat { font-size: 13px; font-weight: 500; color: var(--text); }
-  .tx-note { font-size: 11px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .tx-date { font-size: 10px; color: var(--text3); }
   .tx-amount { font-size: 14px; font-weight: 600; font-family: 'DM Mono', monospace; }
   .tx-del-btn { width: 28px; height: 28px; border-radius: 8px; border: 1px solid var(--border2); color: var(--text3); display: flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -97,6 +96,7 @@
 
   <div class="toast" id="toast"></div>
 
+  <!-- Dashboard -->
   <div class="page active" id="page-dashboard">
     <div class="month-nav">
       <button onclick="changeMonth(-1)"><i data-lucide="chevron-left"></i></button>
@@ -124,6 +124,7 @@
     <div class="card" id="recentTxCard"><div id="recentTxList"></div></div>
   </div>
 
+  <!-- Add Transaction -->
   <div class="page" id="page-add">
     <div class="card">
       <div class="form-group"><label class="form-label">Jenis</label>
@@ -140,6 +141,7 @@
     </div>
   </div>
 
+  <!-- History -->
   <div class="page" id="page-transactions">
     <div class="filter-row">
       <button class="filter-chip active" onclick="setFilter('all',this)">Semua</button>
@@ -149,6 +151,7 @@
     <div class="card"><div id="allTxList"></div></div>
   </div>
 
+  <!-- Settings -->
   <div class="page" id="page-settings">
     <div class="card">
       <div class="form-group"><label class="form-label">Web App URL</label><input type="url" id="gasUrl" class="form-control" oninput="saveUrl()" placeholder="https://script.google.com/macros/s/..."></div>
@@ -185,7 +188,14 @@ function init() {
 }
 
 function getCurrentMonthKey() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
-function showPage(name) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById('page-'+name).classList.add('active'); lucide.createIcons(); }
+function showPage(name) { 
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+  document.getElementById('page-'+name).classList.add('active'); 
+  document.querySelectorAll('.tab-item').forEach(i => i.classList.remove('active'));
+  const idx = ['dashboard','add','transactions','settings'].indexOf(name);
+  document.querySelectorAll('.tab-item')[idx].classList.add('active');
+  lucide.createIcons(); 
+}
 function changeMonth(delta) { const [y,m] = currentMonth.split('-').map(Number); const d = new Date(y, m-1+delta, 1); currentMonth = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; localStorage.setItem(MONTH_KEY, currentMonth); updateMonthLabel(); renderDashboard(); }
 function updateMonthLabel() { const [y,m] = currentMonth.split('-').map(Number); document.getElementById('monthLabel').textContent = new Date(y,m-1,1).toLocaleString('id-ID',{month:'long',year:'numeric'}); }
 function setType(t) { currentType = t; document.getElementById('typeExpense').className = 'seg-btn'+(t==='expense'?' active-expense':''); document.getElementById('typeIncome').className = 'seg-btn'+(t==='income'?' active-income':''); updateCategorySelect(); }
@@ -205,12 +215,7 @@ async function deleteTransaction(id) {
   if (!confirm('Hapus transaksi ini?')) return;
   transactions = transactions.filter(t => t.id !== id);
   saveLocal(); renderDashboard(); renderTransactions();
-  if (gasUrl) {
-    setSyncing(true);
-    try { await gasRequest(gasUrl, { action:'saveAll', transactions: transactions, budgets: budgets }); setOnline(true); showToast('✓ Terhapus di cloud'); }
-    catch(e) { setOnline(false); }
-    setSyncing(false);
-  }
+  if (gasUrl) syncNow();
 }
 
 function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); }
@@ -225,18 +230,18 @@ function renderDashboard() {
 
   const allInc = transactions.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const allExp = transactions.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  document.getElementById('summaryStrip').innerHTML = `<div class="strip-pill">Semua Masuk: <span style="color:var(--success)">${fmt(allInc)}</span></div><div class="strip-pill">Semua Keluar: <span style="color:var(--expense-color)">${fmt(allExp)}</span></div>`;
+  document.getElementById('summaryStrip').innerHTML = `<div class="strip-pill">Total Masuk: <span style="color:var(--success)">${fmt(allInc)}</span></div><div class="strip-pill">Total Keluar: <span style="color:var(--expense-color)">${fmt(allExp)}</span></div>`;
 
   const budgetDiv = document.getElementById('budgetBars');
   const activeCats = EXPENSE_CATS.filter(c => budgets[c] > 0 || monthTx.some(t=>t.category===c));
-  budgetDiv.innerHTML = activeCats.map(cat => {
+  budgetDiv.innerHTML = activeCats.length ? activeCats.map(cat => {
     const spent = monthTx.filter(t=>t.type==='expense'&&t.category===cat).reduce((s,t)=>s+t.amount,0), budget = budgets[cat] || 0, pct = budget>0 ? Math.min((spent/budget)*100, 100) : 0;
     let cls = 'fill-safe'; if (pct>=95) cls='fill-danger'; else if (pct>=80) cls='fill-warn';
     return `<div class="budget-item"><div class="budget-header"><span class="budget-name">${CAT_ICONS[cat]} ${cat}</span><span class="budget-amounts">${fmt(spent)} / ${fmt(budget)}</span></div><div class="progress-track"><div class="progress-fill ${cls}" style="width:${pct}%"></div></div></div>`;
-  }).join('');
+  }).join('') : '<p class="text-center text-gray-500 py-4">Belum ada budget diatur</p>';
 
   const recent = [...monthTx].sort((a,b) => b.date.localeCompare(a.date)).slice(0,5);
-  document.getElementById('recentTxList').innerHTML = recent.length ? recent.map(t => txHTML(t)).join('') : '<p class="text-center text-gray-500 py-4">Tidak ada transaksi</p>';
+  document.getElementById('recentTxList').innerHTML = recent.length ? recent.map(t => txHTML(t)).join('') : '<p class="text-center text-gray-500 py-4">Tidak ada transaksi bulan ini</p>';
   lucide.createIcons();
 }
 
@@ -259,7 +264,12 @@ function renderBudgetSettings() { document.getElementById('budgetSettings').inne
 async function saveBudgets() {
   EXPENSE_CATS.forEach(c => { budgets[c] = parseFloat(document.getElementById(`b_${c.replace(/\s/g,'_')}`).value)||0; });
   localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets));
-  if (gasUrl) syncNow(); else { renderDashboard(); showToast('✓ Tersimpan Lokal'); }
+  if (gasUrl) {
+      await syncNow();
+  } else {
+      renderDashboard();
+      showToast('✓ Tersimpan Lokal');
+  }
 }
 
 async function gasRequest(url, payload) {
@@ -275,28 +285,54 @@ async function syncNow() {
   setSyncing(true);
   try {
     const remote = await gasRequest(gasUrl);
+    
+    // Merge Transaksi
     const remoteTx = remote.transactions || [];
     const localTx = transactions;
     const mergedTx = [...remoteTx];
     localTx.forEach(lt => { if(!mergedTx.find(rt => rt.id === lt.id)) mergedTx.push(lt); });
+    
+    // Logika Budget: Prioritaskan Cloud jika lokal 0
     const remoteB = remote.budgets || {};
-    const mergedB = {...remoteB, ...budgets}; 
+    const hasLocalBudget = Object.values(budgets).some(v => v > 0);
+    const hasRemoteBudget = Object.values(remoteB).some(v => v > 0);
+    
+    let mergedB;
+    if (hasRemoteBudget && !hasLocalBudget) {
+        mergedB = remoteB; // Ambil dari Sheets jika lokal masih kosong
+    } else {
+        mergedB = {...remoteB, ...budgets}; // Gabungkan jika keduanya ada
+    }
+    
+    // Kirim balik hasil merge ke cloud
     await fetch(gasUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action:'saveAll', transactions: mergedTx, budgets: mergedB }) });
-    transactions = mergedTx; budgets = mergedB;
-    saveLocal(); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets));
-    renderDashboard(); renderTransactions(); renderBudgetSettings();
-    setOnline(true); showToast('✓ Sinkron Berhasil','success');
-  } catch(e) { setOnline(false); showToast('✗ Gagal Sync','error'); }
+    
+    // Simpan ke lokal
+    transactions = mergedTx; 
+    budgets = mergedB;
+    saveLocal(); 
+    localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets));
+    
+    renderDashboard(); 
+    renderTransactions(); 
+    renderBudgetSettings();
+    setOnline(true); 
+    showToast('✓ Sinkron Berhasil','success');
+  } catch(e) { 
+    console.error(e);
+    setOnline(false); 
+    showToast('✗ Gagal Sync','error'); 
+  }
   setSyncing(false);
 }
 
 function saveUrl() { gasUrl = document.getElementById('gasUrl').value.trim(); localStorage.setItem(GAS_URL_KEY, gasUrl); }
-async function testConnection() { if(!gasUrl) return; setSyncing(true); try { const r = await fetch(gasUrl+'?action=ping'); if(r.ok) setOnline(true); showToast('✓ Konek!'); } catch(e){ setOnline(false); } setSyncing(false); }
+async function testConnection() { if(!gasUrl) return; setSyncing(true); try { const r = await fetch(gasUrl+'?action=ping'); setOnline(true); showToast('✓ Konek!'); } catch(e){ setOnline(false); showToast('✗ Gagal Konek','error'); } setSyncing(false); }
 function setSyncing(v) { document.getElementById('syncBtn').classList.toggle('syncing', v); }
 function setOnline(v) { document.getElementById('syncStatus').className = v ? 'dot-online' : 'dot-offline'; }
 function fmt(n) { return 'Rp ' + Math.abs(n).toLocaleString('id-ID'); }
 function showToast(m, type='') { const t = document.getElementById('toast'); t.textContent = m; t.className = 'toast show ' + type; setTimeout(()=>t.classList.remove('show'), 3000); }
-function clearData() { if(confirm('Hapus semua?')){ localStorage.clear(); location.reload(); } }
+function clearData() { if(confirm('Hapus semua data lokal?')){ localStorage.clear(); location.reload(); } }
 
 document.addEventListener('DOMContentLoaded', init);
 </script>
