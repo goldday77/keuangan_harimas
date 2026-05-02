@@ -8,7 +8,7 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --border: #1e1e2e; --border2: #2a2a3e; --accent: #6c63ff; --accent2: #a78bfa; --danger: #f87171; --text: #e8e8f0; --text2: #8888a8; --text3: #4a4a6a; }
+  :root { --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --border: #1e1e2e; --border2: #2a2a3e; --accent: #6c63ff; --accent2: #a78bfa; --danger: #f87171; --warning: #fbbf24; --text: #e8e8f0; --text2: #8888a8; --text3: #4a4a6a; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   
@@ -20,7 +20,7 @@
   
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; width: 100%; position: relative; }
   
-  .btn-type { flex: 1; padding: 14px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: 0.3s; color: var(--text3); background: var(--surface2); border: none; }
+  .btn-type { flex: 1; padding: 14px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: 0.3s; color: var(--text3); background: var(--surface2); border: none; cursor: pointer; }
   .btn-type.active-exp { background: linear-gradient(135deg, var(--accent), #7c73ff); color: white; }
   .btn-type.active-inc { background: linear-gradient(135deg, #8b5cf6, var(--accent2)); color: white; }
 
@@ -34,10 +34,12 @@
   .balance-label { font-size: 10px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 1px; display: block; }
   .tx-item { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); position: relative; }
   
-  /* Alert Inline Style */
-  .inline-alert { background: var(--danger); color: white; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; margin-left: 6px; vertical-align: middle; animation: blink 1s infinite; }
-  @keyframes blink { 50% { opacity: 0.5; } }
+  /* Alert Styles */
+  .inline-alert { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; margin-left: 6px; vertical-align: middle; animation: pulse 1.5s infinite; color: white; }
+  .alert-danger { background: var(--danger); }
+  .alert-warning { background: var(--warning); color: #000; }
 
+  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
   .typing-active::after { content: '|'; animation: cursorBlink 0.7s infinite; }
   @keyframes cursorBlink { 50% { opacity: 0; } }
   .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 20px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
@@ -100,7 +102,7 @@
     <input type="url" id="gasUrl" class="form-control" oninput="saveUrl()">
     <button class="btn-primary" style="background:var(--surface2); font-size:13px;" onclick="testConnection()">Sinkron Data</button>
   </div>
-  <div class="card"><span class="balance-label">Target Budget</span><div id="budgetSettingsContainer"></div><button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button></div>
+  <div class="card"><span class="balance-label">Target Budget Bulanan</span><div id="budgetSettingsContainer"></div><button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button></div>
   <button class="btn-primary" style="background:transparent; color:var(--danger); border:1px solid rgba(248,113,113,0.2)" onclick="clearData()">Reset Data</button>
 </div>
 
@@ -113,8 +115,12 @@
 
 <script>
 const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx', BUDGET_KEY = 'fOS_bg';
-const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Belanja Bulanan','Jajan','Lain-lain','Kas Kantor','Kopi Kantor','Iuran Kantor','Tarik Tunai','Sedekah'];
+
+// Definisi Kategori Wajib
+const OBLIGATORY_CATS = ['Sewa Kost', 'Investasi', 'Kas Kantor', 'Kopi Kantor', 'Iuran Kantor', 'Sedekah'];
+const EXP_CATS = ['Makan Pokok','Bensin', ...OBLIGATORY_CATS, 'Belanja Bulanan','Jajan','Lain-lain','Tarik Tunai'];
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
+
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Kopi Kantor':'☕','Iuran Kantor':'🎫','Tarik Tunai':'🏧','Sedekah':'🤲'};
 
 let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense', qInterval;
@@ -131,9 +137,9 @@ async function typeEffect(text) {
     }
     let count = 0;
     qInterval = setInterval(() => {
-        count = (count + 1) % 6;
+        count = (count + 1) % 5;
         el.textContent = text + "?".repeat(count);
-    }, 300);
+    }, 400);
 }
 
 async function enterApp() {
@@ -141,6 +147,9 @@ async function enterApp() {
   if (gasUrl) {
     await typeEffect("kemana perginya uangku");
     await testConnection(true);
+  } else {
+    document.getElementById('loadingStatus').textContent = "Siap digunakan";
+    await new Promise(r => setTimeout(r, 800));
   }
   clearInterval(qInterval);
   document.getElementById('welcome-screen').style.opacity = '0';
@@ -173,22 +182,37 @@ function renderDashboard() {
   
   const container = document.getElementById('budgetBars');
   container.innerHTML = '';
+  
   EXP_CATS.filter(c => budgets[c] > 0 && c !== 'Tarik Tunai').forEach(cat => {
     const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
     const target = budgets[cat];
-    const pct = Math.min((spent / target) * 100, 100);
-    const isOver = spent >= target;
+    const pct = (spent / target) * 100;
+    
+    let hasAlert = false;
+    let alertType = 'alert-danger';
+    
+    // LOGIKA ALERT DUAL-SYSTEM
+    if (OBLIGATORY_CATS.includes(cat)) {
+        // Wajib: Alert jika BELUM 100%
+        if (pct < 100) hasAlert = true;
+    } else {
+        // Biasa: Alert jika SUDAH >= 80%
+        if (pct >= 80) {
+            hasAlert = true;
+            alertType = (pct >= 100) ? 'alert-danger' : 'alert-warning';
+        }
+    }
 
     container.innerHTML += `
-      <div class="card" style="margin-bottom:12px; padding:18px; border-color: ${isOver ? 'var(--danger)' : 'var(--border)'}">
+      <div class="card" style="margin-bottom:12px; padding:18px; border-color: ${hasAlert && alertType === 'alert-danger' ? 'var(--danger)' : 'var(--border)'}">
         <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; align-items:center;">
-          <span style="font-weight:700; color:${isOver ? 'var(--danger)' : 'var(--text)'}">
-            ${cat}${isOver ? '<span class="inline-alert">!</span>' : ''}
+          <span style="font-weight:700;">
+            ${cat}${hasAlert ? `<span class="inline-alert ${alertType}">!</span>` : ''}
           </span>
           <span style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</span>
         </div>
         <div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden;">
-          <div style="height:100%; width:${pct}%; background:${isOver ? 'var(--danger)' : 'var(--accent2)'}; transition:0.5s"></div>
+          <div style="height:100%; width:${Math.min(pct, 100)}%; background:${hasAlert && alertType === 'alert-danger' ? 'var(--danger)' : 'var(--accent2)'}; transition:0.5s"></div>
         </div>
       </div>`;
   });
@@ -205,10 +229,10 @@ function renderBudgetSettings() {
 }
 
 function saveBudgets() {
-    EXP_CATS.forEach(c => { if(c !== 'Tarik Tunai') {
-      const el = document.getElementById(`input_b_${c.replace(/\s/g,'_')}`);
-      if(el) budgets[c] = parseFloat(el.value) || 0;
-    }});
+    EXP_CATS.forEach(c => { 
+        const el = document.getElementById(`input_b_${c.replace(/\s/g,'_')}`);
+        if(el) budgets[c] = parseFloat(el.value) || 0;
+    });
     saveLocal(); showToast('✓ Budget Disimpan'); renderDashboard(); syncToCloud();
 }
 
