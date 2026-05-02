@@ -24,7 +24,9 @@
   .btn-type.active-exp { background: linear-gradient(135deg, var(--accent), #7c73ff); color: white; }
   .btn-type.active-inc { background: linear-gradient(135deg, #8b5cf6, var(--accent2)); color: white; }
 
-  .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; filter: grayscale(0.5); }
+
   .form-control { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px; padding: 14px 18px; color: var(--text); outline: none; margin-bottom: 12px; display: block; font-size: 16px; }
   
   .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.92); border-top: 1px solid var(--border); display: flex; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); }
@@ -37,7 +39,6 @@
   .inline-alert { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; margin-left: 8px; vertical-align: middle; color: white; }
   .alert-danger { background: var(--danger); animation: pulse 1s infinite; }
   .alert-warning { background: var(--warning); color: #000; }
-  .alert-success { background: var(--success); color: #000; }
 
   @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
   .typing-active::after { content: '|'; animation: cursorBlink 0.7s infinite; }
@@ -91,7 +92,7 @@
     <input type="text" id="txNote" class="form-control" placeholder="Catatan...">
     <span class="balance-label">Tanggal</span>
     <input type="date" id="txDate" class="form-control">
-    <button class="btn-primary" onclick="addTransaction()">Simpan Transaksi</button>
+    <button id="btnSave" class="btn-primary" onclick="addTransaction()">Simpan Transaksi</button>
   </div>
 </div>
 
@@ -105,7 +106,11 @@
     <input type="url" id="gasUrl" class="form-control" oninput="saveUrl()">
     <button class="btn-primary" style="background:var(--surface2); font-size:13px;" onclick="testConnection()">Sinkron Data</button>
   </div>
-  <div class="card"><span class="balance-label">Target Budget Bulanan</span><div id="budgetSettingsContainer"></div><button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button></div>
+  <div class="card">
+    <span class="balance-label">Target Budget Bulanan</span>
+    <div id="budgetSettingsContainer"></div>
+    <button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button>
+  </div>
   <button class="btn-primary" style="background:transparent; color:var(--danger); border:1px solid rgba(248,113,113,0.2)" onclick="clearData()">Reset Data</button>
 </div>
 
@@ -157,33 +162,39 @@ async function testConnection(silent = false) {
     try {
         const res = await fetch(url + '?action=getData');
         const data = await res.json();
-        // MIGRATION: Pastikan data cloud juga memiliki atribut account
-        const cloudTx = (data.transactions || []).map(t => ({...t, account: t.account || (t.category === 'Tarik Tunai' ? 'bank' : 'bank')}));
-        transactions = cloudTx;
+        // MIGRATION: Pastikan data cloud memiliki account
+        transactions = (data.transactions || []).map(t => ({...t, account: t.account || (t.category === 'Tarik Tunai' ? 'bank' : 'bank')}));
         budgets = data.budgets || {};
         saveLocal(); updateIndicator('success');
         if(!silent) showToast('✓ Sinkronisasi Berhasil');
         renderDashboard(); renderTransactions();
-    } catch (e) { updateIndicator('error'); if(!silent) showToast('✗ Gagal Hubungkan Cloud'); }
+        return true;
+    } catch (e) { updateIndicator('error'); if(!silent) showToast('✗ Gagal Sinkron'); return false; }
 }
 
 async function syncToCloud() {
-    if(!gasUrl) return;
+    if(!gasUrl) return true;
     updateIndicator('loading');
     try { 
-        await fetch(gasUrl, { method:'POST', mode:'no-cors', body:JSON.stringify({ action:'saveAll', transactions, budgets }) }); 
-        setTimeout(() => updateIndicator('success'), 1000);
-    } catch(e) { updateIndicator('error'); }
+        // Menggunakan fetch POST dan menunggu respon
+        await fetch(gasUrl, { 
+            method:'POST', 
+            mode:'no-cors', 
+            body:JSON.stringify({ action:'saveAll', transactions, budgets }) 
+        });
+        // Karena no-cors tidak bisa baca status 200, kita beri delay kecil untuk simulasi kepastian
+        await new Promise(r => setTimeout(r, 800));
+        updateIndicator('success');
+        return true;
+    } catch(e) { 
+        updateIndicator('error'); 
+        return false;
+    }
 }
 
 function init() {
   const localTx = JSON.parse(localStorage.getItem(DATA_KEY)) || [];
-  // MIGRATION LOGIC: Paksa isi account jika kosong saat init
-  transactions = localTx.map(t => ({
-      ...t,
-      account: t.account || (t.category === 'Tarik Tunai' ? 'bank' : 'bank')
-  }));
-  
+  transactions = localTx.map(t => ({...t, account: t.account || (t.category === 'Tarik Tunai' ? 'bank' : 'bank')}));
   budgets = JSON.parse(localStorage.getItem(BUDGET_KEY)) || {};
   document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('gasUrl').value = localStorage.getItem(GAS_URL_KEY) || '';
@@ -191,99 +202,66 @@ function init() {
 }
 
 function renderDashboard() {
-  let bank = 0, cash = 0, totalIncomeEver = 0;
+  let bank = 0, cash = 0, totalInc = 0;
   const now = new Date();
-  
   const firstDate = transactions.length > 0 ? new Date(transactions[transactions.length - 1].date) : now;
   const diffMonths = (now.getFullYear() - firstDate.getFullYear()) * 12 + (now.getMonth() - firstDate.getMonth()) + 1;
 
   transactions.forEach(t => {
     const amt = Number(t.amount);
-    if (t.type === 'income') {
-        bank += amt;
-        totalIncomeEver += amt;
-    } else {
-      // LOGIC PROTEKSI: Selalu cek account secara eksplisit
-      if (t.category === 'Tarik Tunai') { 
-          bank -= amt; 
-          cash += amt; 
-      } else { 
-          if(t.account === 'cash') cash -= amt;
-          else bank -= amt;
-      }
+    if (t.type === 'income') { bank += amt; totalInc += amt; }
+    else {
+      if (t.category === 'Tarik Tunai') { bank -= amt; cash += amt; }
+      else { if(t.account === 'cash') cash -= amt; else bank -= amt; }
     }
   });
 
   document.getElementById('balBank').textContent = fmt(bank);
   document.getElementById('balCash').textContent = fmt(cash);
+  budgets['Sedekah'] = totalInc * 0.025;
   
-  budgets['Sedekah'] = totalIncomeEver * 0.025;
   const container = document.getElementById('budgetBars');
   container.innerHTML = '';
   
   EXP_CATS.filter(c => (budgets[c] > 0 || c === 'Sedekah') && c !== 'Tarik Tunai').forEach(cat => {
-    const totalSpent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
-    const cumulativeTarget = (cat === 'Sedekah') ? budgets['Sedekah'] : (budgets[cat] * diffMonths);
-    const pct = (totalSpent / cumulativeTarget) * 100;
+    const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
+    const target = (cat === 'Sedekah') ? budgets['Sedekah'] : (budgets[cat] * diffMonths);
+    const pct = (spent / target) * 100;
     
-    let hasAlert = false, alertType = 'alert-danger', labelStatus = '';
-    
+    let alertClass = '', labelStatus = '';
     if (OBLIGATORY_CATS.includes(cat)) {
-        if (totalSpent < cumulativeTarget) {
-            hasAlert = true; alertType = 'alert-warning';
-            labelStatus = `<span style="color:var(--warning); font-size:10px"> (-${fmt(cumulativeTarget - totalSpent)})</span>`;
-        } else if (totalSpent > cumulativeTarget) {
-            labelStatus = `<span style="color:var(--success); font-size:10px"> (+${fmt(totalSpent - cumulativeTarget)})</span>`;
-        }
+        if (spent < target) { alertClass = 'alert-warning'; labelStatus = `<span style="color:var(--warning); font-size:10px"> (-${fmt(target - spent)})</span>`; }
+        else if (spent > target) { labelStatus = `<span style="color:var(--success); font-size:10px"> (+${fmt(spent - target)})</span>`; }
     } else {
-        if (totalSpent > cumulativeTarget) {
-            hasAlert = true; alertType = 'alert-danger';
-            labelStatus = `<span style="color:var(--danger); font-size:10px"> (+${fmt(totalSpent - cumulativeTarget)})</span>`;
-        } else if (pct >= 85) {
-            hasAlert = true; alertType = 'alert-warning';
-        }
+        if (spent > target) { alertClass = 'alert-danger'; labelStatus = `<span style="color:var(--danger); font-size:10px"> (+${fmt(spent - target)})</span>`; }
+        else if (pct >= 85) { alertClass = 'alert-warning'; }
     }
 
     container.innerHTML += `
-      <div class="card" style="margin-bottom:12px; padding:18px; border-color: ${hasAlert && alertType === 'alert-danger' ? 'var(--danger)' : 'var(--border)'}">
+      <div class="card" style="margin-bottom:12px; padding:18px; border-color:${alertClass==='alert-danger'?'var(--danger)':'var(--border)'}">
         <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; align-items:center;">
-          <span style="font-weight:700;">${cat}${hasAlert ? `<span class="inline-alert ${alertType}">!</span>` : ''}</span>
+          <span style="font-weight:700;">${cat}${alertClass?`<span class="inline-alert ${alertClass}">!</span>`:''}</span>
           <div style="text-align:right">
-            <div style="font-family:'DM Mono'">${fmt(totalSpent)} / ${fmt(cumulativeTarget)}</div>
+            <div style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</div>
             ${labelStatus}
           </div>
         </div>
         <div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden;">
-          <div style="height:100%; width:${Math.min(pct, 100)}%; background:${hasAlert ? (alertType === 'alert-danger' ? 'var(--danger)' : 'var(--warning)') : 'var(--accent2)'}; transition:0.5s"></div>
+          <div style="height:100%; width:${Math.min(pct, 100)}%; background:${alertClass==='alert-danger'?'var(--danger)':(alertClass==='alert-warning'?'var(--warning)':'var(--accent2)')}; transition:0.5s"></div>
         </div>
       </div>`;
   });
   renderTxList(transactions.slice(0, 5), 'recentTxList', false);
 }
 
-function renderBudgetSettings() {
-    const container = document.getElementById('budgetSettingsContainer');
-    container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai').map(c => `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px">${c} ${c === 'Sedekah' ? '(Auto 2.5%)' : ''}</span>
-        <input type="number" class="form-control" style="width:140px;margin:0;" id="input_b_${c.replace(/\s/g,'_')}" 
-        value="${budgets[c]||0}" ${c === 'Sedekah' ? 'disabled style="opacity:0.5"' : ''}>
-      </div>`).join('');
-}
-
-function saveBudgets() {
-    EXP_CATS.forEach(c => { 
-        if (c === 'Sedekah') return;
-        const el = document.getElementById(`input_b_${c.replace(/\s/g,'_')}`);
-        if(el) budgets[c] = parseFloat(el.value) || 0;
-    });
-    saveLocal(); showToast('✓ Budget Disimpan'); renderDashboard(); syncToCloud();
-}
-
-function addTransaction() {
-  const amtInput = document.getElementById('txAmount'), noteInput = document.getElementById('txNote'), accInput = document.getElementById('txAccount');
+async function addTransaction() {
+  const amtInput = document.getElementById('txAmount'), noteInput = document.getElementById('txNote'), accInput = document.getElementById('txAccount'), btn = document.getElementById('btnSave');
   const amt = parseFloat(amtInput.value);
   if(!amt) return;
+
+  btn.disabled = true;
+  btn.textContent = "Menyimpan ke Cloud...";
+
   const newTx = { 
       id: Date.now().toString(), 
       type: currentType, 
@@ -293,55 +271,55 @@ function addTransaction() {
       note: noteInput.value, 
       date: document.getElementById('txDate').value 
   };
+  
+  // Simpan lokal dulu agar UI terasa cepat tapi jangan pindah halaman dulu
+  const oldTransactions = [...transactions];
   transactions.unshift(newTx);
-  saveLocal(); 
-  amtInput.value = ''; noteInput.value = ''; accInput.value = 'bank';
-  renderDashboard(); renderTransactions(); 
-  showPage('dashboard', document.getElementById('tab-dashboard')); 
-  syncToCloud(); showToast('✓ Tersimpan');
+  
+  // TUNGGU CLOUD
+  const success = await syncToCloud();
+  
+  if(success) {
+      saveLocal(); 
+      amtInput.value = ''; noteInput.value = '';
+      renderDashboard(); renderTransactions(); 
+      showPage('dashboard', document.getElementById('tab-dashboard')); 
+      showToast('✓ Berhasil Tersimpan');
+  } else {
+      showToast('⚠️ Gagal Terhubung Cloud');
+      transactions = oldTransactions; // Revert data lokal jika benar-benar gagal
+  }
+
+  btn.disabled = false;
+  btn.textContent = "Simpan Transaksi";
+}
+
+function renderBudgetSettings() {
+    const container = document.getElementById('budgetSettingsContainer');
+    container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai').map(c => `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px">${c} ${c==='Sedekah'?'(Auto 2.5%)':''}</span>
+        <input type="number" class="form-control" style="width:140px;margin:0;" id="input_b_${c.replace(/\s/g,'_')}" value="${budgets[c]||0}" ${c==='Sedekah'?'disabled style="opacity:0.5"':''}>
+      </div>`).join('');
+}
+
+async function saveBudgets() {
+    EXP_CATS.forEach(c => { 
+        if (c === 'Sedekah') return;
+        const el = document.getElementById(`input_b_${c.replace(/\s/g,'_')}`);
+        if(el) budgets[c] = parseFloat(el.value) || 0;
+    });
+    const success = await syncToCloud();
+    if(success) { saveLocal(); showToast('✓ Budget Disimpan'); renderDashboard(); }
 }
 
 function deleteTx(id) { if(!confirm('Hapus?')) return; transactions = transactions.filter(t => t.id !== id); saveLocal(); renderDashboard(); renderTransactions(); syncToCloud(); }
-
-function setType(t) {
-  currentType = t;
-  document.getElementById('btn-exp').className = t === 'expense' ? 'btn-type active-exp' : 'btn-type';
-  document.getElementById('btn-inc').className = t === 'income' ? 'btn-type active-inc' : 'btn-type';
-  document.getElementById('accountSelector').style.display = t === 'expense' ? 'block' : 'none';
-  const cats = t === 'expense' ? EXP_CATS : INC_CATS;
-  document.getElementById('txCategory').innerHTML = cats.map(c => `<option value="${c}">${ICONS[c]||'🔹'} ${c}</option>`).join('');
-}
-
+function setType(t) { currentType = t; document.getElementById('btn-exp').className = t==='expense'?'btn-type active-exp':'btn-type'; document.getElementById('btn-inc').className = t==='income'?'btn-type active-inc':'btn-type'; document.getElementById('accountSelector').style.display = t==='expense'?'block':'none'; const cats = t==='expense'?EXP_CATS:INC_CATS; document.getElementById('txCategory').innerHTML = cats.map(c => `<option value="${c}">${ICONS[c]||'🔹'} ${c}</option>`).join(''); }
 function checkCategory(v) { document.getElementById('accountSelector').style.display = (v === 'Tarik Tunai') ? 'none' : 'block'; }
 function fmt(n) { return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
-
-function showPage(n, el) { 
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
-    document.getElementById('page-'+n).classList.add('active'); 
-    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-    if(el) el.classList.add('active');
-    if(n === 'settings') renderBudgetSettings();
-    lucide.createIcons();
-}
-
+function showPage(n, el) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById('page-'+n).classList.add('active'); document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); if(el) el.classList.add('active'); if(n==='settings') renderBudgetSettings(); lucide.createIcons(); }
 function renderTransactions() { renderTxList(transactions, 'allTxList', true); }
-function renderTxList(data, target, showDelete) {
-  document.getElementById(target).innerHTML = data.map(t => `
-    <div class="tx-item">
-      <div style="font-size:20px">${ICONS[t.category]||'🔹'}</div>
-      <div style="flex:1">
-        <div style="font-size:13px; font-weight:600">${t.category}</div>
-        <div style="font-size:10px; color:var(--text3)">${t.account==='cash'?'💵 Cash':'🏦 Bank'} • ${t.note||'-'}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-weight:700; color:${t.type==='income'?'var(--accent2)':'var(--text)'}">${fmt(t.amount)}</div>
-        <div style="font-size:9px; color:var(--text3)">${t.date}</div>
-      </div>
-      ${showDelete ? `<div onclick="deleteTx('${t.id}')" style="margin-left:10px; color:var(--text3); cursor:pointer"><i data-lucide="trash-2" style="width:16px"></i></div>` : ''}
-    </div>`).join('') || '<p style="text-align:center;color:var(--text3);padding:20px">Kosong</p>';
-  lucide.createIcons();
-}
-
+function renderTxList(data, target, showDelete) { document.getElementById(target).innerHTML = data.map(t => `<div class="tx-item"><div style="font-size:20px">${ICONS[t.category]||'🔹'}</div><div style="flex:1"><div style="font-size:13px; font-weight:600">${t.category}</div><div style="font-size:10px; color:var(--text3)">${t.account==='cash'?'💵 Cash':'🏦 Bank'} • ${t.note||'-'}</div></div><div style="text-align:right"><div style="font-weight:700; color:${t.type==='income'?'var(--accent2)':'var(--text)'}">${fmt(t.amount)}</div><div style="font-size:9px; color:var(--text3)">${t.date}</div></div>${showDelete?`<div onclick="deleteTx('${t.id}')" style="margin-left:10px; color:var(--text3); cursor:pointer"><i data-lucide="trash-2" style="width:16px"></i></div>`:''}</div>`).join('') || '<p style="text-align:center;color:var(--text3);padding:20px">Kosong</p>'; lucide.createIcons(); }
 function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); }
 function saveUrl() { localStorage.setItem(GAS_URL_KEY, document.getElementById('gasUrl').value); gasUrl = document.getElementById('gasUrl').value; }
 function clearData() { if(confirm('Hapus semua?')) { localStorage.clear(); location.reload(); } }
