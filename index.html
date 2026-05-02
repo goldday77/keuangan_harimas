@@ -11,27 +11,44 @@
   :root { --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --border: #1e1e2e; --border2: #2a2a3e; --accent: #6c63ff; --accent2: #a78bfa; --danger: #f87171; --warning: #fbbf24; --success: #4ade80; --text: #e8e8f0; --text2: #8888a8; --text3: #4a4a6a; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+  
   #welcome-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s ease-in-out; }
+  
   .nav-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.85); border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
+  
   .page { display: none; padding: 80px 16px 120px; max-width: 500px; margin: 0 auto; animation: fadeIn 0.3s ease; width: 100%; }
   .page.active { display: block; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; width: 100%; position: relative; }
+  
   .btn-type { flex: 1; padding: 14px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: 0.3s; color: var(--text3); background: var(--surface2); border: none; cursor: pointer; }
   .btn-type.active-exp { background: linear-gradient(135deg, var(--accent), #7c73ff); color: white; }
   .btn-type.active-inc { background: linear-gradient(135deg, #8b5cf6, var(--accent2)); color: white; }
+  
   .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  
   .form-control { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px; padding: 14px 18px; color: var(--text); outline: none; margin-bottom: 12px; display: block; font-size: 16px; }
+  
   .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.92); border-top: 1px solid var(--border); display: flex; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); }
   .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); font-size: 11px; cursor: pointer; transition: 0.2s; }
   .tab-item.active { color: var(--accent2); }
+  
   .balance-label { font-size: 10px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 1px; display: block; }
+  
   .tx-item { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); position: relative; }
-  .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 24px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; white-space: nowrap; }
+  
+  .inline-alert { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; margin-left: 8px; vertical-align: middle; color: white; }
+  .alert-danger { background: var(--danger); animation: pulse 1s infinite; }
+  .alert-warning { background: var(--warning); color: #000; }
+  @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
+  
+  .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 24px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
   .toast.show { opacity: 1; bottom: 120px; }
-  #syncIndicator { transition: 0.5s; }
+  
+  #syncIndicator { transition: 0.5s; width: 12px; height: 12px; border-radius: 50%; background: var(--text3); border: 2px solid var(--bg); }
   .sync-loading { animation: pulse 0.6s infinite; background: var(--warning) !important; }
-  @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 </style>
 </head>
 <body>
@@ -39,13 +56,14 @@
 <div id="welcome-screen">
   <div style="font-size:28px; font-weight:800; margin-bottom:20px;">Keuangan <span style="color:var(--accent2)">Harimas</span></div>
   <button class="btn-primary" style="width:200px" onclick="enterApp()">Mulai Aplikasi</button>
+  <div id="loadingStatus" style="margin-top:25px; font-size:14px; color:var(--accent2); font-family:'DM Mono';"></div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <nav class="nav-bar">
   <div style="font-weight:700; font-size:18px;">Keuangan <span style="color:var(--accent2)">Harimas</span></div>
-  <div id="syncIndicator" style="width:12px; height:12px; border-radius:50%; background:var(--text3); border: 2px solid var(--bg);"></div>
+  <div id="syncIndicator"></div>
 </nav>
 
 <div class="page active" id="page-dashboard">
@@ -53,6 +71,7 @@
     <div class="card" style="padding: 16px;"><span class="balance-label">Rekening</span><div id="balBank" style="font-size: 18px; font-weight:700; font-family:'DM Mono'">Rp0</div></div>
     <div class="card" style="padding: 16px;"><span class="balance-label">Cash</span><div id="balCash" style="font-size: 18px; font-weight:700; font-family:'DM Mono'; color:var(--accent2)">Rp0</div></div>
   </div>
+  <div id="budgetBars"></div>
   <div class="card"><span class="balance-label" style="margin-bottom:15px">Transaksi Terakhir</span><div id="recentTxList"></div></div>
 </div>
 
@@ -91,6 +110,11 @@
     <input type="url" id="gasUrl" class="form-control" oninput="saveUrl()">
     <button class="btn-primary" style="background:var(--surface2); font-size:13px;" onclick="testConnection()">Sinkron Data</button>
   </div>
+  <div class="card">
+    <span class="balance-label">Target Budget Bulanan</span>
+    <div id="budgetSettingsContainer"></div>
+    <button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button>
+  </div>
   <button class="btn-primary" style="background:transparent; color:var(--danger); border:1px solid rgba(248,113,113,0.2)" onclick="clearData()">Reset Data</button>
 </div>
 
@@ -102,18 +126,22 @@
 </nav>
 
 <script>
-const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx';
-const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Investasi','Kas Kantor','Kopi Kantor','Iuran Kantor','Sedekah','Belanja Bulanan','Jajan','Lain-lain','Tarik Tunai'];
+const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx', BUDGET_KEY = 'fOS_bg';
+const OBLIGATORY_CATS = ['Sewa Kost', 'Investasi', 'Kas Kantor', 'Kopi Kantor', 'Iuran Kantor', 'Sedekah'];
+const EXP_CATS = ['Makan Pokok','Bensin', ...OBLIGATORY_CATS, 'Belanja Bulanan','Jajan','Lain-lain','Tarik Tunai'];
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Kopi Kantor':'☕','Iuran Kantor':'🎫','Tarik Tunai':'🏧','Sedekah':'🤲'};
 
-let transactions = [], gasUrl = '', currentType = 'expense';
+let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense';
 
 function showToast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 
 async function enterApp() {
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
-  if (gasUrl) await testConnection(true);
+  if (gasUrl) { 
+      document.getElementById('loadingStatus').textContent = "Sinkronisasi...";
+      await testConnection(true); 
+  }
   document.getElementById('welcome-screen').style.opacity = '0';
   setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 800);
 }
@@ -121,9 +149,9 @@ async function enterApp() {
 function updateIndicator(state) {
     const el = document.getElementById('syncIndicator');
     el.classList.remove('sync-loading');
-    if (state === 'loading') el.classList.add('sync-loading');
-    else if (state === 'success') { el.style.background = 'var(--success)'; }
-    else if (state === 'error') { el.style.background = 'var(--danger)'; }
+    if (state === 'loading') { el.classList.add('sync-loading'); }
+    else if (state === 'success') { el.style.background = 'var(--success)'; el.style.boxShadow = '0 0 8px var(--success)'; }
+    else if (state === 'error') { el.style.background = 'var(--danger)'; el.style.boxShadow = '0 0 8px var(--danger)'; }
 }
 
 async function testConnection(silent = false) {
@@ -133,14 +161,15 @@ async function testConnection(silent = false) {
     try {
         const res = await fetch(url + '?action=getData');
         const data = await res.json();
-        // LOGIKA BARU: Sesuaikan dengan istilah di Google Sheet (rekening / cash)
+        // LOGIKA SINKRON: Menggunakan istilah 'rekening'
         transactions = (data.transactions || []).map(t => ({
             ...t, 
             account: t.account ? t.account.toLowerCase() : (t.category === 'Tarik Tunai' ? 'rekening' : 'rekening')
         }));
+        budgets = data.budgets || {};
         saveLocal(); updateIndicator('success');
         if(!silent) showToast('✓ Sinkronisasi Berhasil');
-        renderDashboard(); renderTransactions();
+        renderDashboard(); renderTransactions(); renderBudgetSettings();
         return true;
     } catch (e) { updateIndicator('error'); return false; }
 }
@@ -149,7 +178,7 @@ async function syncToCloud() {
     if(!gasUrl) return true;
     updateIndicator('loading');
     try { 
-        await fetch(gasUrl, { method:'POST', mode:'no-cors', body:JSON.stringify({ action:'saveAll', transactions }) });
+        await fetch(gasUrl, { method:'POST', mode:'no-cors', body:JSON.stringify({ action:'saveAll', transactions, budgets }) });
         updateIndicator('success');
         return true;
     } catch(e) { updateIndicator('error'); return false; }
@@ -158,26 +187,61 @@ async function syncToCloud() {
 function init() {
   const localTx = JSON.parse(localStorage.getItem(DATA_KEY)) || [];
   transactions = localTx;
+  budgets = JSON.parse(localStorage.getItem(BUDGET_KEY)) || {};
   document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('gasUrl').value = localStorage.getItem(GAS_URL_KEY) || '';
-  setType('expense'); renderDashboard(); renderTransactions(); lucide.createIcons();
+  setType('expense'); renderDashboard(); renderTransactions(); renderBudgetSettings(); lucide.createIcons();
 }
 
 function renderDashboard() {
-  let rek = 0, csh = 0;
+  let rek = 0, csh = 0, totalInc = 0;
+  const now = new Date();
+  const firstDate = transactions.length > 0 ? new Date(transactions[transactions.length - 1].date) : now;
+  const diffMonths = (now.getFullYear() - firstDate.getFullYear()) * 12 + (now.getMonth() - firstDate.getMonth()) + 1;
+
   transactions.forEach(t => {
     const amt = Number(String(t.amount).replace(/[^\d]/g, ''));
-    if (t.type === 'income') { rek += amt; }
+    if (t.type === 'income') { rek += amt; totalInc += amt; }
     else {
       if (t.category === 'Tarik Tunai') { rek -= amt; csh += amt; }
-      else { 
-          if(t.account === 'cash') csh -= amt; 
-          else rek -= amt; 
-      }
+      else { if(t.account === 'cash') csh -= amt; else rek -= amt; }
     }
   });
+
   document.getElementById('balBank').textContent = fmt(rek);
   document.getElementById('balCash').textContent = fmt(csh);
+  budgets['Sedekah'] = totalInc * 0.025;
+  
+  const container = document.getElementById('budgetBars');
+  container.innerHTML = '';
+  EXP_CATS.filter(c => (budgets[c] > 0 || c === 'Sedekah') && c !== 'Tarik Tunai').forEach(cat => {
+    const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
+    const target = (cat === 'Sedekah') ? budgets['Sedekah'] : (budgets[cat] * diffMonths);
+    const pct = (spent / target) * 100;
+    let alertClass = '', labelStatus = '';
+    
+    if (OBLIGATORY_CATS.includes(cat)) {
+        if (spent < target) { alertClass = 'alert-warning'; labelStatus = `<span style="color:var(--warning); font-size:10px"> (-${fmt(target - spent)})</span>`; }
+        else if (spent > target) { labelStatus = `<span style="color:var(--success); font-size:10px"> (+${fmt(spent - target)})</span>`; }
+    } else {
+        if (spent > target) { alertClass = 'alert-danger'; labelStatus = `<span style="color:var(--danger); font-size:10px"> (+${fmt(spent - target)})</span>`; }
+        else if (pct >= 85) { alertClass = 'alert-warning'; }
+    }
+    
+    container.innerHTML += `
+      <div class="card" style="margin-bottom:12px; padding:18px; border-color:${alertClass==='alert-danger'?'var(--danger)':'var(--border)'}">
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; align-items:center;">
+          <span style="font-weight:700;">${cat}${alertClass?`<span class="inline-alert ${alertClass}">!</span>`:''}</span>
+          <div style="text-align:right">
+            <div style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</div>
+            ${labelStatus}
+          </div>
+        </div>
+        <div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden;">
+          <div style="height:100%; width:${Math.min(pct, 100)}%; background:${alertClass==='alert-danger'?'var(--danger)':(alertClass==='alert-warning'?'var(--warning)':'var(--accent2)')}; transition:0.5s"></div>
+        </div>
+      </div>`;
+  });
   renderTxList(transactions.slice(0, 5), 'recentTxList', false);
 }
 
@@ -186,7 +250,8 @@ async function addTransaction() {
   const amt = parseFloat(amtInput.value);
   if(!amt) return;
 
-  btn.disabled = true;
+  btn.disabled = true; btn.textContent = "Menyimpan...";
+
   const newTx = { 
       id: Date.now().toString(), 
       type: currentType, 
@@ -202,12 +267,27 @@ async function addTransaction() {
   if(success) {
       saveLocal(); 
       amtInput.value = ''; noteInput.value = ''; 
-      document.getElementById('txAccount').value = 'rekening'; // RESET KE REKENING
+      document.getElementById('txAccount').value = 'rekening'; 
       renderDashboard(); renderTransactions(); 
       showPage('dashboard', document.getElementById('tab-dashboard')); 
-      showToast('✓ Tersimpan');
+      showToast('✓ Berhasil Tersimpan');
   }
-  btn.disabled = false;
+  btn.disabled = false; btn.textContent = "Simpan Transaksi";
+}
+
+function renderBudgetSettings() {
+  const container = document.getElementById('budgetSettingsContainer');
+  container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai' && c !== 'Sedekah').map(cat => `
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px; margin-bottom:5px; color:var(--text2)">${cat}</div>
+      <input type="number" class="form-control budget-input" data-cat="${cat}" value="${budgets[cat]||0}" style="margin-bottom:0">
+    </div>
+  `).join('');
+}
+
+function saveBudgets() {
+  document.querySelectorAll('.budget-input').forEach(input => { budgets[input.dataset.cat] = parseFloat(input.value) || 0; });
+  saveLocal(); syncToCloud(); showToast('✓ Budget Disimpan'); renderDashboard();
 }
 
 function setType(t) { 
@@ -223,10 +303,26 @@ function checkCategory(v) { document.getElementById('accountSelector').style.dis
 function fmt(n) { return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
 function showPage(n, el) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.getElementById('page-'+n).classList.add('active'); document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); if(el) el.classList.add('active'); lucide.createIcons(); }
 function renderTransactions() { renderTxList(transactions, 'allTxList', true); }
-function renderTxList(data, target, showDelete) { document.getElementById(target).innerHTML = data.map(t => `<div class="tx-item"><div style="font-size:20px">${ICONS[t.category]||'🔹'}</div><div style="flex:1"><div style="font-size:13px; font-weight:600">${t.category}</div><div style="font-size:10px; color:var(--text3)">${t.account === 'cash' ? '💵 Cash' : '🏦 Rekening'} • ${t.note||'-'}</div></div><div style="text-align:right"><div style="font-weight:700; color:${t.type==='income'?'var(--accent2)':'var(--text)'}">${fmt(t.amount)}</div><div style="font-size:9px; color:var(--text3)">${t.date}</div></div></div>`).join(''); lucide.createIcons(); }
-function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); }
+
+function renderTxList(data, target, showDelete) {
+  document.getElementById(target).innerHTML = data.map(t => `
+    <div class="tx-item">
+      <div style="font-size:20px">${ICONS[t.category]||'🔹'}</div>
+      <div style="flex:1">
+        <div style="font-size:13px; font-weight:600">${t.category}</div>
+        <div style="font-size:10px; color:var(--text3)">${t.account === 'cash' ? '💵 Cash' : '🏦 Rekening'} • ${t.note||'-'}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:700; color:${t.type==='income'?'var(--accent2)':'var(--text)'}">${fmt(t.amount)}</div>
+        <div style="font-size:9px; color:var(--text3)">${t.date}</div>
+      </div>
+    </div>`).join('') || '<p style="text-align:center;color:var(--text3);padding:20px">Belum ada transaksi</p>';
+  lucide.createIcons();
+}
+
+function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); }
 function saveUrl() { localStorage.setItem(GAS_URL_KEY, document.getElementById('gasUrl').value); gasUrl = document.getElementById('gasUrl').value; }
-function clearData() { if(confirm('Hapus semua?')) { localStorage.clear(); location.reload(); } }
+function clearData() { if(confirm('Hapus semua data?')) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
 </html>
