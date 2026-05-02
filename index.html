@@ -8,7 +8,7 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --border: #1e1e2e; --border2: #2a2a3e; --accent: #6c63ff; --accent2: #a78bfa; --danger: #f87171; --warning: #fbbf24; --text: #e8e8f0; --text2: #8888a8; --text3: #4a4a6a; }
+  :root { --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --border: #1e1e2e; --border2: #2a2a3e; --accent: #6c63ff; --accent2: #a78bfa; --danger: #f87171; --warning: #fbbf24; --success: #4ade80; --text: #e8e8f0; --text2: #8888a8; --text3: #4a4a6a; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   
@@ -34,7 +34,6 @@
   .balance-label { font-size: 10px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 1px; display: block; }
   .tx-item { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); position: relative; }
   
-  /* Alert Styles */
   .inline-alert { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; margin-left: 6px; vertical-align: middle; animation: pulse 1.5s infinite; color: white; }
   .alert-danger { background: var(--danger); }
   .alert-warning { background: var(--warning); color: #000; }
@@ -44,6 +43,9 @@
   @keyframes cursorBlink { 50% { opacity: 0; } }
   .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 20px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
   .toast.show { opacity: 1; }
+  
+  #syncIndicator { transition: 0.5s; box-shadow: 0 0 0px transparent; }
+  .sync-loading { animation: pulse 0.5s infinite; background: var(--warning) !important; }
 </style>
 </head>
 <body>
@@ -58,7 +60,7 @@
 
 <nav class="nav-bar">
   <div style="font-weight:700; font-size:18px;">Keuangan <span style="color:var(--accent2)">Harimas</span></div>
-  <div id="syncIndicator" style="width:10px; height:10px; border-radius:50%; background:var(--text3);"></div>
+  <div id="syncIndicator" style="width:12px; height:12px; border-radius:50%; background:var(--text3); border: 2px solid var(--bg);"></div>
 </nav>
 
 <div class="page active" id="page-dashboard">
@@ -70,6 +72,7 @@
   <div class="card"><span class="balance-label" style="margin-bottom:15px">Transaksi Terakhir</span><div id="recentTxList"></div></div>
 </div>
 
+<!-- Page Add, Transactions, Settings tetap sama seperti sebelumnya -->
 <div class="page" id="page-add">
   <div class="card">
     <div style="display:flex; gap:12px; margin-bottom:20px; background:var(--surface2); padding:6px; border-radius:20px;">
@@ -115,12 +118,9 @@
 
 <script>
 const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx', BUDGET_KEY = 'fOS_bg';
-
-// Definisi Kategori Wajib
 const OBLIGATORY_CATS = ['Sewa Kost', 'Investasi', 'Kas Kantor', 'Kopi Kantor', 'Iuran Kantor', 'Sedekah'];
 const EXP_CATS = ['Makan Pokok','Bensin', ...OBLIGATORY_CATS, 'Belanja Bulanan','Jajan','Lain-lain','Tarik Tunai'];
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
-
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Kopi Kantor':'☕','Iuran Kantor':'🎫','Tarik Tunai':'🏧','Sedekah':'🤲'};
 
 let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense', qInterval;
@@ -147,15 +147,49 @@ async function enterApp() {
   if (gasUrl) {
     await typeEffect("kemana perginya uangku");
     await testConnection(true);
-  } else {
-    document.getElementById('loadingStatus').textContent = "Siap digunakan";
-    await new Promise(r => setTimeout(r, 800));
   }
   clearInterval(qInterval);
   document.getElementById('welcome-screen').style.opacity = '0';
   setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 800);
 }
 
+function updateIndicator(state) {
+    const el = document.getElementById('syncIndicator');
+    el.classList.remove('sync-loading');
+    if (state === 'loading') { el.classList.add('sync-loading'); }
+    else if (state === 'success') { el.style.background = 'var(--success)'; el.style.boxShadow = '0 0 8px var(--success)'; }
+    else if (state === 'error') { el.style.background = 'var(--danger)'; el.style.boxShadow = '0 0 8px var(--danger)'; }
+}
+
+async function testConnection(silent = false) {
+    const url = document.getElementById('gasUrl').value || gasUrl;
+    if(!url) return;
+    updateIndicator('loading');
+    try {
+        const res = await fetch(url + '?action=getData');
+        const data = await res.json();
+        transactions = data.transactions || [];
+        budgets = data.budgets || {};
+        saveLocal();
+        updateIndicator('success');
+        if(!silent) showToast('✓ Sinkronisasi Berhasil');
+        renderDashboard(); renderTransactions();
+    } catch (e) { 
+        updateIndicator('error');
+        if(!silent) showToast('✗ Gagal Hubungkan Cloud'); 
+    }
+}
+
+async function syncToCloud() {
+    if(!gasUrl) return;
+    updateIndicator('loading');
+    try { 
+        await fetch(gasUrl, { method:'POST', mode:'no-cors', body:JSON.stringify({ action:'saveAll', transactions, budgets }) }); 
+        setTimeout(() => updateIndicator('success'), 1000);
+    } catch(e) { updateIndicator('error'); }
+}
+
+// Logika render, add, delete, dll tetap sama dengan versi sebelumnya
 function init() {
   transactions = JSON.parse(localStorage.getItem(DATA_KEY)) || [];
   budgets = JSON.parse(localStorage.getItem(BUDGET_KEY)) || {};
@@ -187,16 +221,12 @@ function renderDashboard() {
     const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
     const target = budgets[cat];
     const pct = (spent / target) * 100;
-    
     let hasAlert = false;
     let alertType = 'alert-danger';
     
-    // LOGIKA ALERT DUAL-SYSTEM
     if (OBLIGATORY_CATS.includes(cat)) {
-        // Wajib: Alert jika BELUM 100%
         if (pct < 100) hasAlert = true;
     } else {
-        // Biasa: Alert jika SUDAH >= 80%
         if (pct >= 80) {
             hasAlert = true;
             alertType = (pct >= 100) ? 'alert-danger' : 'alert-warning';
@@ -206,9 +236,7 @@ function renderDashboard() {
     container.innerHTML += `
       <div class="card" style="margin-bottom:12px; padding:18px; border-color: ${hasAlert && alertType === 'alert-danger' ? 'var(--danger)' : 'var(--border)'}">
         <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; align-items:center;">
-          <span style="font-weight:700;">
-            ${cat}${hasAlert ? `<span class="inline-alert ${alertType}">!</span>` : ''}
-          </span>
+          <span style="font-weight:700;">${cat}${hasAlert ? `<span class="inline-alert ${alertType}">!</span>` : ''}</span>
           <span style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</span>
         </div>
         <div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden;">
@@ -288,25 +316,6 @@ function renderTxList(data, target, showDelete) {
       ${showDelete ? `<div onclick="deleteTx('${t.id}')" style="margin-left:10px; color:var(--text3); cursor:pointer"><i data-lucide="trash-2" style="width:16px"></i></div>` : ''}
     </div>`).join('') || '<p style="text-align:center;color:var(--text3);padding:20px">Kosong</p>';
   lucide.createIcons();
-}
-
-async function testConnection(silent = false) {
-    const url = document.getElementById('gasUrl').value || gasUrl;
-    if(!url) return;
-    try {
-        const res = await fetch(url + '?action=getData');
-        const data = await res.json();
-        transactions = data.transactions || [];
-        budgets = data.budgets || {};
-        saveLocal();
-        if(!silent) showToast('✓ Sinkronisasi Berhasil');
-        renderDashboard(); renderTransactions();
-    } catch (e) { if(!silent) showToast('✗ Gagal Hubungkan Cloud'); }
-}
-
-async function syncToCloud() {
-    if(!gasUrl) return;
-    try { await fetch(gasUrl, { method:'POST', mode:'no-cors', body:JSON.stringify({ action:'saveAll', transactions, budgets }) }); } catch(e) {}
 }
 
 function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); }
