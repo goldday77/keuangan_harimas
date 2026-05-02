@@ -12,13 +12,19 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   
-  #welcome-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
+  #welcome-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s ease-in-out; }
   .nav-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.85); border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
   .page { display: none; padding: 80px 16px 120px; max-width: 500px; margin: 0 auto; animation: fadeIn 0.3s ease; width: 100%; }
   .page.active { display: block; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; width: 100%; }
+  
+  /* Style Tombol Form */
+  .btn-type { flex: 1; padding: 14px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: all 0.3s ease; border: 1px solid transparent; color: var(--text3); background: var(--surface2); }
+  .btn-type.active-exp { background: linear-gradient(135deg, var(--accent), #7c73ff); color: white; border: none; box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3); }
+  .btn-type.active-inc { background: linear-gradient(135deg, var(--success), #10b981); color: white; border: none; box-shadow: 0 4px 15px rgba(52, 211, 153, 0.3); }
+
   .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
   .btn-primary:active { transform: scale(0.98); }
   
@@ -27,13 +33,19 @@
   .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.92); border-top: 1px solid var(--border); display: flex; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); }
   .tab-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text3); font-size: 11px; cursor: pointer; }
   .tab-item.active { color: var(--accent2); }
+  
   .balance-label { font-size: 10px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 1px; display: block; }
   .tx-item { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
   
   .spin { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  
   .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 20px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
   .toast.show { opacity: 1; }
+
+  /* Animasi Typewriter */
+  .typing-text::after { content: '|'; animation: blink 0.7s infinite; margin-left: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
 </style>
 </head>
 <body>
@@ -41,7 +53,7 @@
 <div id="welcome-screen">
   <div style="font-size:28px; font-weight:800; margin-bottom:20px;">Keuangan <span style="color:var(--accent2)">Harimas</span></div>
   <button class="btn-primary" style="width:200px" id="btnStart" onclick="enterApp()">Mulai Aplikasi</button>
-  <div id="loadingStatus" style="margin-top:20px; font-size:14px; color:var(--text2); font-style: italic; min-height: 20px;"></div>
+  <div id="loadingStatus" class="typing-text" style="margin-top:25px; font-size:14px; color:var(--accent2); font-family:'DM Mono'; letter-spacing: -0.5px; min-height: 20px;"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -64,9 +76,9 @@
 <!-- INPUT -->
 <div class="page" id="page-add">
   <div class="card">
-    <div style="display:flex; gap:12px; margin-bottom:20px">
-      <button id="btn-exp" class="btn-primary" style="flex:1" onclick="setType('expense')">Pengeluaran</button>
-      <button id="btn-inc" class="btn-primary" style="flex:1; background:var(--surface2); opacity:0.5" onclick="setType('income')">Pemasukan</button>
+    <div style="display:flex; gap:12px; margin-bottom:20px; background:var(--surface2); padding:6px; border-radius:20px;">
+      <button id="btn-exp" class="btn-type active-exp" onclick="setType('expense')">Pengeluaran</button>
+      <button id="btn-inc" class="btn-type" onclick="setType('income')">Pemasukan</button>
     </div>
     <span class="balance-label">Jumlah</span>
     <input type="number" id="txAmount" class="form-control" placeholder="Rp 0" inputmode="numeric">
@@ -74,10 +86,7 @@
     <select id="txCategory" class="form-control" onchange="checkCategory(this.value)"></select>
     <div id="accountSelector">
         <span class="balance-label">Sumber Dana</span>
-        <select id="txAccount" class="form-control">
-            <option value="bank">🏦 Rekening</option>
-            <option value="cash">💵 Cash</option>
-        </select>
+        <select id="txAccount" class="form-control"><option value="bank">🏦 Rekening</option><option value="cash">💵 Cash</option></select>
     </div>
     <span class="balance-label">Keterangan</span>
     <input type="text" id="txNote" class="form-control" placeholder="Catatan...">
@@ -119,16 +128,39 @@ const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Be
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Tarik Tunai':'🏧','Sedekah':'🤲'};
 
-let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense';
+let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense', qInterval;
 
 function showToast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 
+// Animasi Ketik & Simbol ?
+async function typeEffect(text) {
+    const el = document.getElementById('loadingStatus');
+    el.textContent = "";
+    for (let i = 0; i < text.length; i++) {
+        el.textContent += text[i];
+        await new Promise(r => setTimeout(r, 60));
+    }
+    // Start question marks loop
+    let count = 0;
+    qInterval = setInterval(() => {
+        count = (count + 1) % 5;
+        el.textContent = text + "?".repeat(count);
+    }, 400);
+}
+
 async function enterApp() {
-  const status = document.getElementById('loadingStatus');
+  const btnStart = document.getElementById('btnStart');
+  btnStart.style.display = 'none';
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
-  if (gasUrl) { status.textContent = 'Kemana perginya uangku?'; await testConnection(true); }
+  
+  if (gasUrl) {
+    await typeEffect("Kemana perginya uangku");
+    await testConnection(true);
+  }
+  
+  clearInterval(qInterval);
   document.getElementById('welcome-screen').style.opacity = '0';
-  setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 500);
+  setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 800);
 }
 
 async function testConnection(silent = false) {
@@ -145,7 +177,8 @@ async function testConnection(silent = false) {
         saveLocal();
         document.getElementById('syncIndicator').style.background = '#34d399';
         if(!silent) { showToast('✓ Sinkronisasi Berhasil'); statusText.textContent = 'Terakhir sinkron: Baru saja'; renderDashboard(); renderBudgetSettings(); renderTransactions(); }
-    } catch (e) { if(!silent) { showToast('✗ Gagal Hubungkan Cloud'); statusText.textContent = 'Gagal terhubung. Cek URL Anda.'; }
+    } catch (e) { 
+        if(!silent) { showToast('✗ Gagal Hubungkan Cloud'); statusText.textContent = 'Gagal terhubung. Cek URL Anda.'; }
     } finally { if(!silent && icon) icon.classList.remove('spin'); }
 }
 
@@ -200,17 +233,9 @@ async function addTransaction() {
   const accInput = document.getElementById('txAccount');
   const amt = parseFloat(amtInput.value);
   if(!amt) return;
-  
   const tx = { id: Date.now().toString(), type: currentType, amount: amt, category: document.getElementById('txCategory').value, account: accInput.value, note: noteInput.value, date: document.getElementById('txDate').value };
-  
   transactions.unshift(tx);
-  saveLocal(); 
-  
-  // RESET FORM & FORCE DEFAULT TO BANK
-  amtInput.value = ''; 
-  noteInput.value = '';
-  accInput.value = 'bank'; 
-  
+  saveLocal(); amtInput.value = ''; noteInput.value = ''; accInput.value = 'bank';
   renderDashboard(); renderTransactions(); showPage('dashboard'); syncToCloud();
 }
 
@@ -225,10 +250,20 @@ async function syncToCloud() {
     try { await fetch(gasUrl, { method:'POST', mode:'no-cors', body:JSON.stringify({ action:'saveAll', transactions, budgets }) }); document.getElementById('syncIndicator').style.background = '#34d399'; } catch(e) {}
 }
 
+// Logic Ganti Tipe & Warna Tombol
 function setType(t) {
   currentType = t;
-  document.getElementById('btn-exp').style.opacity = t === 'expense' ? '1' : '0.5';
-  document.getElementById('btn-inc').style.opacity = t === 'income' ? '1' : '0.5';
+  const btnExp = document.getElementById('btn-exp');
+  const btnInc = document.getElementById('btn-inc');
+  
+  if (t === 'expense') {
+      btnExp.className = 'btn-type active-exp';
+      btnInc.className = 'btn-type';
+  } else {
+      btnExp.className = 'btn-type';
+      btnInc.className = 'btn-type active-inc';
+  }
+  
   document.getElementById('accountSelector').style.display = t === 'expense' ? 'block' : 'none';
   const cats = t === 'expense' ? EXP_CATS : INC_CATS;
   document.getElementById('txCategory').innerHTML = cats.map(c => `<option value="${c}">${ICONS[c]||'🔹'} ${c}</option>`).join('');
