@@ -12,14 +12,15 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   
-  #welcome-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #welcome-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.5s; }
   .nav-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.85); border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
   .page { display: none; padding: 80px 16px 120px; max-width: 500px; margin: 0 auto; animation: fadeIn 0.3s ease; width: 100%; }
   .page.active { display: block; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; width: 100%; }
-  .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
+  .btn-primary:active { transform: scale(0.98); }
   
   .form-control { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 16px; padding: 14px 18px; color: var(--text); outline: none; margin-bottom: 12px; display: block; }
   
@@ -28,6 +29,7 @@
   .tab-item.active { color: var(--accent2); }
   .balance-label { font-size: 10px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 1px; display: block; }
   .tx-item { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  
   .spin { animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 20px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
@@ -38,8 +40,8 @@
 
 <div id="welcome-screen">
   <div style="font-size:28px; font-weight:800; margin-bottom:20px;">Keuangan <span style="color:var(--accent2)">Harimas</span></div>
-  <button class="btn-primary" style="width:200px" onclick="enterApp()">Mulai Aplikasi</button>
-  <div id="loadingStatus" style="margin-top:20px; font-size:14px; color:var(--text2); font-style: italic;"></div>
+  <button class="btn-primary" style="width:200px" id="btnStart" onclick="enterApp()">Mulai Aplikasi</button>
+  <div id="loadingStatus" style="margin-top:20px; font-size:14px; color:var(--text2); font-style: italic; min-height: 20px;"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -92,6 +94,7 @@
     <button class="btn-primary" style="background:var(--surface2); font-size:13px; margin-top:5px" onclick="testConnection()">
         <i data-lucide="refresh-cw" id="iconTest"></i> Test & Sinkron Data
     </button>
+    <div id="syncStatusText" style="font-size:11px; color:var(--text3); text-align:center; margin-top:8px;"></div>
   </div>
   <div class="card"><span class="balance-label" style="margin-bottom:15px">Target Budget Bulanan</span><div id="budgetSettingsContainer"></div><button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button></div>
   <button class="btn-primary" style="background:transparent; color:var(--danger); border:1px solid rgba(248,113,113,0.2)" onclick="clearData()">Reset Semua Data</button>
@@ -106,7 +109,6 @@
 
 <script>
 const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx', BUDGET_KEY = 'fOS_bg';
-const OBLIGATION_CATS = ['Investasi', 'Sewa Kost', 'Kas Kantor', 'Sedekah'];
 const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Belanja Bulanan','Jajan','Lain-lain','Kas Kantor','Tarik Tunai','Sedekah'];
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
 const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Tarik Tunai':'🏧','Sedekah':'🤲'};
@@ -116,18 +118,32 @@ let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense';
 function showToast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 
 async function enterApp() {
-  document.getElementById('loadingStatus').textContent = 'Kemana perginya uangku?';
+  const status = document.getElementById('loadingStatus');
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
-  if (gasUrl) await testConnection(true);
-  document.getElementById('welcome-screen').style.display = 'none';
-  init();
+  
+  if (gasUrl) {
+    status.textContent = 'Kemana perginya uangku?'; // Muncul hanya jika ada URL & sedang sinkron
+    await testConnection(true);
+  }
+  
+  document.getElementById('welcome-screen').style.opacity = '0';
+  setTimeout(() => {
+    document.getElementById('welcome-screen').style.display = 'none';
+    init();
+  }, 500);
 }
 
 async function testConnection(silent = false) {
     const icon = document.getElementById('iconTest');
-    const url = document.getElementById('gasUrl').value.trim();
+    const statusText = document.getElementById('syncStatusText');
+    const url = silent ? gasUrl : document.getElementById('gasUrl').value.trim();
+    
     if(!url) return;
-    if(!silent) icon.classList.add('spin');
+    if(!silent) {
+        icon.classList.add('spin');
+        statusText.textContent = 'Menghubungkan...';
+    }
+
     try {
         const res = await fetch(url + '?action=getData');
         const data = await res.json();
@@ -135,10 +151,20 @@ async function testConnection(silent = false) {
         budgets = data.budgets || {};
         saveLocal();
         document.getElementById('syncIndicator').style.background = '#34d399';
-        if(!silent) showToast('✓ Sinkronisasi Berhasil');
-        renderDashboard(); renderBudgetSettings(); renderTransactions();
-    } catch (e) { if(!silent) showToast('✗ Gagal Hubungkan Cloud'); }
-    if(!silent) icon.classList.remove('spin');
+        if(!silent) {
+            showToast('✓ Sinkronisasi Berhasil');
+            statusText.textContent = 'Terakhir sinkron: Baru saja';
+            renderDashboard(); renderBudgetSettings(); renderTransactions();
+        }
+    } catch (e) {
+        if(!silent) {
+            showToast('✗ Gagal Hubungkan Cloud');
+            statusText.textContent = 'Gagal terhubung. Cek URL Anda.';
+        }
+    } finally {
+        // Blok ini PASTI dijalankan baik sukses maupun gagal
+        if(!silent) icon.classList.remove('spin');
+    }
 }
 
 function init() {
