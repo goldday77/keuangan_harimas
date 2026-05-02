@@ -62,7 +62,6 @@
 </nav>
 
 <div class="page active" id="page-dashboard">
-  <!-- DUAL BALANCE DISPLAY -->
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
     <div class="card" style="margin-bottom:12px; padding: 16px; background: linear-gradient(145deg, #12121a, #1a1a2e);">
         <div class="balance-label">Rekening</div>
@@ -73,9 +72,7 @@
         <div class="balance-val" id="balCash" style="font-size: 18px; color: var(--success);">Rp0</div>
     </div>
   </div>
-  
   <div id="budgetBars"></div>
-  
   <div class="card">
     <div class="balance-label" style="margin-bottom:15px">Transaksi Terakhir</div>
     <div id="recentTxList"></div>
@@ -95,12 +92,11 @@
     <label class="balance-label">Kategori</label>
     <select id="txCategory" class="form-control" onchange="checkCategory(this.value)"></select>
 
-    <!-- ACCOUNT SELECTOR (Muncul Hanya untuk Pengeluaran) -->
     <div id="accountSelector">
         <label class="balance-label">Sumber Dana</label>
         <select id="txAccount" class="form-control">
-            <option value="bank">🏦 Saldo Rekening (Default)</option>
-            <option value="cash">💵 Saldo Cash (Dompet)</option>
+            <option value="bank">🏦 Saldo Rekening</option>
+            <option value="cash">💵 Saldo Cash</option>
         </select>
     </div>
 
@@ -116,7 +112,6 @@
   </div>
 </div>
 
-<!-- ... Page Riwayat & Settings Tetap Sama ... -->
 <div class="page" id="page-transactions">
   <div class="card"><div class="balance-label" style="margin-bottom:15px">Riwayat Transaksi</div><div id="allTxList"></div></div>
 </div>
@@ -148,9 +143,7 @@ const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'�
 let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense';
 
 async function enterApp() {
-  const status = document.getElementById('loadingStatus');
-  status.textContent = 'Kemana perginya uangku?';
-  
+  document.getElementById('loadingStatus').textContent = 'Kemana perginya uangku?';
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
   if (gasUrl) {
     try {
@@ -159,14 +152,9 @@ async function enterApp() {
       transactions = remote.transactions || [];
       budgets = remote.budgets || {};
       saveLocal();
-      document.getElementById('syncIndicator').style.background = '#34d399';
-    } catch (e) { console.log('Offline mode'); }
+    } catch (e) { console.log('Offline'); }
   }
-  
-  setTimeout(() => {
-    document.getElementById('welcome-screen').style.display = 'none';
-    init();
-  }, 1000);
+  setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 800);
 }
 
 function init() {
@@ -182,17 +170,17 @@ function init() {
 
 function renderDashboard() {
   let bank = 0, cash = 0;
-  
+  // Kalkulasi ulang total dari nol agar akurat setiap kali dipanggil
   transactions.forEach(t => {
     if (t.type === 'income') {
-      bank += t.amount; // Pemasukan selalu ke Bank
+      bank += Number(t.amount);
     } else {
       if (t.category === 'Tarik Tunai') {
-        bank -= t.amount;
-        cash += t.amount;
+        bank -= Number(t.amount);
+        cash += Number(t.amount);
       } else {
-        if (t.account === 'cash') cash -= t.amount;
-        else bank -= t.amount;
+        if (t.account === 'cash') cash -= Number(t.amount);
+        else bank -= Number(t.amount);
       }
     }
   });
@@ -200,11 +188,10 @@ function renderDashboard() {
   document.getElementById('balBank').textContent = fmt(bank);
   document.getElementById('balCash').textContent = fmt(cash);
   
-  // Render Budget Bars
   const container = document.getElementById('budgetBars');
   container.innerHTML = '';
   EXP_CATS.filter(c => budgets[c] > 0 && c !== 'Tarik Tunai').forEach(cat => {
-    const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + t.amount, 0);
+    const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
     const target = budgets[cat];
     const pct = Math.min((spent / target) * 100, 100);
     container.innerHTML += `
@@ -222,28 +209,35 @@ function renderDashboard() {
 }
 
 function checkCategory(val) {
-    // Jika pilih Tarik Tunai, sembunyikan pilihan Sumber Dana karena otomatis dari Bank
     document.getElementById('accountSelector').style.display = (val === 'Tarik Tunai') ? 'none' : 'block';
 }
 
 async function addTransaction() {
-  const amount = parseFloat(document.getElementById('txAmount').value);
-  const category = document.getElementById('txCategory').value;
+  const amountInput = document.getElementById('txAmount');
+  const noteInput = document.getElementById('txNote');
+  const amount = parseFloat(amountInput.value);
   if(!amount) return;
 
   const tx = {
     id: Date.now().toString(),
     type: currentType,
-    amount,
-    category,
+    amount: amount,
+    category: document.getElementById('txCategory').value,
     account: document.getElementById('txAccount').value,
-    note: document.getElementById('txNote').value,
+    note: noteInput.value,
     date: document.getElementById('txDate').value
   };
 
   transactions.unshift(tx);
   saveLocal();
+  
+  // RESET FORM
+  amountInput.value = '';
+  noteInput.value = '';
+  document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
+  
   renderDashboard();
+  renderTransactions();
   showPage('dashboard');
   
   if(gasUrl) fetch(gasUrl, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action:'saveAll', transactions, budgets }) });
@@ -254,7 +248,6 @@ function setType(t) {
   document.getElementById('btn-exp').style.opacity = t === 'expense' ? '1' : '0.5';
   document.getElementById('btn-inc').style.opacity = t === 'income' ? '1' : '0.5';
   document.getElementById('accountSelector').style.display = t === 'expense' ? 'block' : 'none';
-  
   const cats = t === 'expense' ? EXP_CATS : INC_CATS;
   document.getElementById('txCategory').innerHTML = cats.map(c => `<option value="${c}">${ICONS[c]||'🔹'} ${c}</option>`).join('');
 }
@@ -283,7 +276,10 @@ function showPage(n, el) {
     if(el) el.classList.add('active');
     lucide.createIcons();
 }
-function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); }
+function saveLocal() { 
+  localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); 
+  localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); 
+}
 function saveUrl() { localStorage.setItem(GAS_URL_KEY, document.getElementById('gasUrl').value); }
 function renderBudgetSettings() { 
     document.getElementById('budgetSettings').innerHTML = '<div class="balance-label">Budget Bulanan</div>' + 
