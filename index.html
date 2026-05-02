@@ -192,7 +192,10 @@ function renderDashboard() {
     if (t.type === 'income') bank += amt;
     else {
       if (t.category === 'Tarik Tunai') { bank -= amt; cash += amt; }
-      else { (t.account === 'cash') ? cash -= amt : bank -= amt; }
+      else { 
+        // PERBAIKAN: Memastikan account terbaca dengan benar dari data tersimpan
+        (t.account === 'cash') ? cash -= amt : bank -= amt; 
+      }
     }
     if (t.type === 'income' && tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
         totalIncomeThisMonth += amt;
@@ -251,11 +254,22 @@ function addTransaction() {
   const amtInput = document.getElementById('txAmount'), noteInput = document.getElementById('txNote'), accInput = document.getElementById('txAccount');
   const amt = parseFloat(amtInput.value);
   if(!amt) return;
-  transactions.unshift({ id: Date.now().toString(), type: currentType, amount: amt, category: document.getElementById('txCategory').value, account: accInput.value, note: noteInput.value, date: document.getElementById('txDate').value });
+  
+  // PERBAIKAN: Memastikan atribut 'account' tersimpan secara eksplisit
+  const newTx = { 
+    id: Date.now().toString(), 
+    type: currentType, 
+    amount: amt, 
+    category: document.getElementById('txCategory').value, 
+    account: currentType === 'income' ? 'bank' : accInput.value, 
+    note: noteInput.value, 
+    date: document.getElementById('txDate').value 
+  };
+  
+  transactions.unshift(newTx);
   saveLocal(); 
   amtInput.value = ''; noteInput.value = ''; accInput.value = 'bank';
   renderDashboard(); renderTransactions(); 
-  // PERBAIKAN: Memanggil showPage dengan elemen tab Beranda agar icon berubah warna
   showPage('dashboard', document.getElementById('tab-dashboard')); 
   syncToCloud(); showToast('✓ Tersimpan');
 }
@@ -301,7 +315,10 @@ function renderTxList(data, target, showDelete) {
   lucide.createIcons();
 }
 
-function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); }
+function saveLocal() { 
+  localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); 
+  localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); 
+}
 function saveUrl() { localStorage.setItem(GAS_URL_KEY, document.getElementById('gasUrl').value); gasUrl = document.getElementById('gasUrl').value; }
 function clearData() { if(confirm('Hapus semua?')) { localStorage.clear(); location.reload(); } }
 </script>
