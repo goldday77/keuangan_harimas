@@ -63,7 +63,6 @@
   <div id="syncIndicator" style="width:12px; height:12px; border-radius:50%; background:var(--text3); border: 2px solid var(--bg);"></div>
 </nav>
 
-<!-- DASHBOARD PAGE -->
 <div class="page active" id="page-dashboard">
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
     <div class="card" style="padding: 16px;"><span class="balance-label">Rekening</span><div id="balBank" style="font-size: 18px; font-weight:700; font-family:'DM Mono'">Rp0</div></div>
@@ -73,7 +72,6 @@
   <div class="card"><span class="balance-label" style="margin-bottom:15px">Transaksi Terakhir</span><div id="recentTxList"></div></div>
 </div>
 
-<!-- ADD TRANSACTION PAGE -->
 <div class="page" id="page-add">
   <div class="card">
     <div style="display:flex; gap:12px; margin-bottom:20px; background:var(--surface2); padding:6px; border-radius:20px;">
@@ -82,49 +80,34 @@
     </div>
     <span class="balance-label">Jumlah</span>
     <input type="number" id="txAmount" class="form-control" placeholder="Rp 0" inputmode="numeric">
-    
     <span class="balance-label">Kategori</span>
     <select id="txCategory" class="form-control" onchange="checkCategory(this.value)"></select>
-    
     <div id="accountSelector">
         <span class="balance-label">Sumber Dana</span>
-        <select id="txAccount" class="form-control">
-            <option value="bank">🏦 Rekening</option>
-            <option value="cash">💵 Cash</option>
-        </select>
+        <select id="txAccount" class="form-control"><option value="bank">🏦 Rekening</option><option value="cash">💵 Cash</option></select>
     </div>
-    
     <span class="balance-label">Keterangan</span>
-    <input type="text" id="txNote" class="form-control" placeholder="Catatan transaksi...">
-    
+    <input type="text" id="txNote" class="form-control" placeholder="Catatan...">
     <span class="balance-label">Tanggal</span>
     <input type="date" id="txDate" class="form-control">
-    
     <button class="btn-primary" onclick="addTransaction()">Simpan Transaksi</button>
   </div>
 </div>
 
-<!-- HISTORY PAGE -->
 <div class="page" id="page-transactions">
   <div class="card"><span class="balance-label" style="margin-bottom:15px">Riwayat Lengkap</span><div id="allTxList"></div></div>
 </div>
 
-<!-- SETTINGS PAGE -->
 <div class="page" id="page-settings">
   <div class="card">
     <span class="balance-label">Google Sheets URL</span>
-    <input type="url" id="gasUrl" class="form-control" placeholder="https://script.google.com/..." oninput="saveUrl()">
+    <input type="url" id="gasUrl" class="form-control" oninput="saveUrl()">
     <button class="btn-primary" style="background:var(--surface2); font-size:13px;" onclick="testConnection()">Sinkron Data</button>
   </div>
-  <div class="card">
-    <span class="balance-label">Target Budget Bulanan</span>
-    <div id="budgetSettingsContainer"></div>
-    <button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button>
-  </div>
+  <div class="card"><span class="balance-label">Target Budget Bulanan</span><div id="budgetSettingsContainer"></div><button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button></div>
   <button class="btn-primary" style="background:transparent; color:var(--danger); border:1px solid rgba(248,113,113,0.2)" onclick="clearData()">Reset Data</button>
 </div>
 
-<!-- NAVIGATION -->
 <nav class="tab-bar">
   <div class="tab-item active" onclick="showPage('dashboard', this)"><i data-lucide="layout-dashboard"></i><span>Beranda</span></div>
   <div class="tab-item" onclick="showPage('add', this)"><i data-lucide="plus-circle"></i><span>Input</span></div>
@@ -133,7 +116,6 @@
 </nav>
 
 <script>
-// KONFIGURASI KATEGORI
 const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx', BUDGET_KEY = 'fOS_bg';
 const OBLIGATORY_CATS = ['Sewa Kost', 'Investasi', 'Kas Kantor', 'Kopi Kantor', 'Iuran Kantor', 'Sedekah'];
 const EXP_CATS = ['Makan Pokok','Bensin', ...OBLIGATORY_CATS, 'Belanja Bulanan','Jajan','Lain-lain','Tarik Tunai'];
@@ -142,53 +124,29 @@ const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'�
 
 let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense', qInterval;
 
-// FUNGSI UTAMA & SISTEM
-function showToast(m) { 
-    const t = document.getElementById('toast'); 
-    t.textContent = m; 
-    t.classList.add('show'); 
-    setTimeout(() => t.classList.remove('show'), 3000); 
-}
+function showToast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 
 async function typeEffect(text) {
     const el = document.getElementById('loadingStatus');
-    el.classList.add('typing-active');
-    el.textContent = "";
-    for (let i = 0; i < text.length; i++) {
-        el.textContent += text[i];
-        await new Promise(r => setTimeout(r, 60));
-    }
-    let count = 0;
-    qInterval = setInterval(() => {
-        count = (count + 1) % 5;
-        el.textContent = text + "?".repeat(count);
-    }, 400);
+    el.classList.add('typing-active'); el.textContent = "";
+    for (let i = 0; i < text.length; i++) { el.textContent += text[i]; await new Promise(r => setTimeout(r, 60)); }
+    let count = 0; qInterval = setInterval(() => { count = (count + 1) % 5; el.textContent = text + "?".repeat(count); }, 400);
 }
 
 async function enterApp() {
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
-  if (gasUrl) {
-    await typeEffect("kemana perginya uangku");
-    await testConnection(true);
-  }
+  if (gasUrl) { await typeEffect("kemana perginya uangku"); await testConnection(true); }
   clearInterval(qInterval);
   document.getElementById('welcome-screen').style.opacity = '0';
   setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 800);
 }
 
-// INDIKATOR SINKRONISASI
 function updateIndicator(state) {
     const el = document.getElementById('syncIndicator');
     el.classList.remove('sync-loading');
-    if (state === 'loading') { 
-        el.classList.add('sync-loading'); 
-    } else if (state === 'success') { 
-        el.style.background = 'var(--success)'; 
-        el.style.boxShadow = '0 0 10px var(--success)'; 
-    } else if (state === 'error') { 
-        el.style.background = 'var(--danger)'; 
-        el.style.boxShadow = '0 0 10px var(--danger)'; 
-    }
+    if (state === 'loading') { el.classList.add('sync-loading'); }
+    else if (state === 'success') { el.style.background = 'var(--success)'; el.style.boxShadow = '0 0 8px var(--success)'; }
+    else if (state === 'error') { el.style.background = 'var(--danger)'; el.style.boxShadow = '0 0 8px var(--danger)'; }
 }
 
 async function testConnection(silent = false) {
@@ -200,14 +158,10 @@ async function testConnection(silent = false) {
         const data = await res.json();
         transactions = data.transactions || [];
         budgets = data.budgets || {};
-        saveLocal();
-        updateIndicator('success');
+        saveLocal(); updateIndicator('success');
         if(!silent) showToast('✓ Sinkronisasi Berhasil');
         renderDashboard(); renderTransactions();
-    } catch (e) { 
-        updateIndicator('error');
-        if(!silent) showToast('✗ Gagal Hubungkan Cloud'); 
-    }
+    } catch (e) { updateIndicator('error'); if(!silent) showToast('✗ Gagal Hubungkan Cloud'); }
 }
 
 async function syncToCloud() {
@@ -215,76 +169,46 @@ async function syncToCloud() {
     updateIndicator('loading');
     try { 
         await fetch(gasUrl, { method:'POST', mode:'no-cors', body:JSON.stringify({ action:'saveAll', transactions, budgets }) }); 
-        setTimeout(() => updateIndicator('success'), 1200);
-    } catch(e) { 
-        updateIndicator('error'); 
-    }
+        setTimeout(() => updateIndicator('success'), 1000);
+    } catch(e) { updateIndicator('error'); }
 }
 
-// TRANSAKSI & LOGIKA
 function init() {
   transactions = JSON.parse(localStorage.getItem(DATA_KEY)) || [];
   budgets = JSON.parse(localStorage.getItem(BUDGET_KEY)) || {};
   document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('gasUrl').value = localStorage.getItem(GAS_URL_KEY) || '';
-  setType('expense');
-  renderDashboard();
-  renderTransactions();
-  lucide.createIcons();
+  setType('expense'); renderDashboard(); renderTransactions(); lucide.createIcons();
 }
 
-function addTransaction() {
-  const amtInput = document.getElementById('txAmount');
-  const noteInput = document.getElementById('txNote');
-  const accInput = document.getElementById('txAccount');
-  const amt = parseFloat(amtInput.value);
-  
-  if(!amt) { showToast('⚠️ Masukkan nominal!'); return; }
-
-  transactions.unshift({ 
-    id: Date.now().toString(), 
-    type: currentType, 
-    amount: amt, 
-    category: document.getElementById('txCategory').value, 
-    account: accInput.value, 
-    note: noteInput.value, 
-    date: document.getElementById('txDate').value 
-  });
-
-  saveLocal(); 
-  
-  // RESET FIELDS
-  amtInput.value = '';
-  noteInput.value = '';
-  accInput.value = 'bank'; // Default kembali ke Rekening
-  
-  renderDashboard(); 
-  renderTransactions(); 
-  showPage('dashboard'); 
-  syncToCloud();
-  showToast('✓ Transaksi Disimpan');
-}
-
-function deleteTx(id) {
-    if(!confirm('Hapus transaksi?')) return;
-    transactions = transactions.filter(t => t.id !== id);
-    saveLocal(); renderDashboard(); renderTransactions(); syncToCloud();
-}
-
-// RENDERING UI
 function renderDashboard() {
-  let bank = 0, cash = 0;
+  let bank = 0, cash = 0, totalIncomeThisMonth = 0;
+  const now = new Date();
+  const currentMonth = now.getMonth(), currentYear = now.getFullYear();
+
   transactions.forEach(t => {
     const amt = Number(t.amount);
+    const tDate = new Date(t.date);
+    
+    // Hitung Saldo Real-time
     if (t.type === 'income') bank += amt;
     else {
       if (t.category === 'Tarik Tunai') { bank -= amt; cash += amt; }
-      else { t.account === 'cash' ? cash -= amt : bank -= amt; }
+      else { (t.account === 'cash') ? cash -= amt : bank -= amt; }
+    }
+
+    // Hitung Income bulan ini untuk Sedekah Otomatis
+    if (t.type === 'income' && tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
+        totalIncomeThisMonth += amt;
     }
   });
+
   document.getElementById('balBank').textContent = fmt(bank);
   document.getElementById('balCash').textContent = fmt(cash);
   
+  // LOGIKA SEDEKAH OTOMATIS (2.5%)
+  budgets['Sedekah'] = totalIncomeThisMonth * 0.025;
+
   const container = document.getElementById('budgetBars');
   container.innerHTML = '';
   
@@ -292,18 +216,10 @@ function renderDashboard() {
     const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
     const target = budgets[cat];
     const pct = (spent / target) * 100;
-    
     let hasAlert = false, alertType = 'alert-danger';
     
-    // DUAL ALERT LOGIC
-    if (OBLIGATORY_CATS.includes(cat)) {
-        if (pct < 100) hasAlert = true;
-    } else {
-        if (pct >= 80) {
-            hasAlert = true;
-            alertType = (pct >= 100) ? 'alert-danger' : 'alert-warning';
-        }
-    }
+    if (OBLIGATORY_CATS.includes(cat)) { if (pct < 100) hasAlert = true; } 
+    else { if (pct >= 80) { hasAlert = true; alertType = (pct >= 100) ? 'alert-danger' : 'alert-warning'; } }
 
     container.innerHTML += `
       <div class="card" style="margin-bottom:12px; padding:18px; border-color: ${hasAlert && alertType === 'alert-danger' ? 'var(--danger)' : 'var(--border)'}">
@@ -319,6 +235,59 @@ function renderDashboard() {
   renderTxList(transactions.slice(0, 5), 'recentTxList', false);
 }
 
+function renderBudgetSettings() {
+    const container = document.getElementById('budgetSettingsContainer');
+    container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai').map(c => `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px">${c} ${c === 'Sedekah' ? '(Auto 2.5%)' : ''}</span>
+        <input type="number" class="form-control" style="width:140px;margin:0;" id="input_b_${c.replace(/\s/g,'_')}" 
+        value="${budgets[c]||0}" ${c === 'Sedekah' ? 'disabled style="opacity:0.5"' : ''}>
+      </div>`).join('');
+}
+
+function saveBudgets() {
+    EXP_CATS.forEach(c => { 
+        if (c === 'Sedekah') return; // Skip sedekah karena auto
+        const el = document.getElementById(`input_b_${c.replace(/\s/g,'_')}`);
+        if(el) budgets[c] = parseFloat(el.value) || 0;
+    });
+    saveLocal(); showToast('✓ Budget Disimpan'); renderDashboard(); syncToCloud();
+}
+
+function addTransaction() {
+  const amtInput = document.getElementById('txAmount'), noteInput = document.getElementById('txNote'), accInput = document.getElementById('txAccount');
+  const amt = parseFloat(amtInput.value);
+  if(!amt) return;
+  transactions.unshift({ id: Date.now().toString(), type: currentType, amount: amt, category: document.getElementById('txCategory').value, account: accInput.value, note: noteInput.value, date: document.getElementById('txDate').value });
+  saveLocal(); 
+  amtInput.value = ''; noteInput.value = ''; accInput.value = 'bank';
+  renderDashboard(); renderTransactions(); showPage('dashboard'); syncToCloud(); showToast('✓ Tersimpan');
+}
+
+function deleteTx(id) { if(!confirm('Hapus?')) return; transactions = transactions.filter(t => t.id !== id); saveLocal(); renderDashboard(); renderTransactions(); syncToCloud(); }
+
+function setType(t) {
+  currentType = t;
+  document.getElementById('btn-exp').className = t === 'expense' ? 'btn-type active-exp' : 'btn-type';
+  document.getElementById('btn-inc').className = t === 'income' ? 'btn-type active-inc' : 'btn-type';
+  document.getElementById('accountSelector').style.display = t === 'expense' ? 'block' : 'none';
+  const cats = t === 'expense' ? EXP_CATS : INC_CATS;
+  document.getElementById('txCategory').innerHTML = cats.map(c => `<option value="${c}">${ICONS[c]||'🔹'} ${c}</option>`).join('');
+}
+
+function checkCategory(v) { document.getElementById('accountSelector').style.display = (v === 'Tarik Tunai') ? 'none' : 'block'; }
+function fmt(n) { return 'Rp' + Math.round(n).toLocaleString('id-ID'); }
+
+function showPage(n, el) { 
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
+    document.getElementById('page-'+n).classList.add('active'); 
+    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+    if(el) el.classList.add('active');
+    if(n === 'settings') renderBudgetSettings();
+    lucide.createIcons();
+}
+
+function renderTransactions() { renderTxList(transactions, 'allTxList', true); }
 function renderTxList(data, target, showDelete) {
   document.getElementById(target).innerHTML = data.map(t => `
     <div class="tx-item">
@@ -332,52 +301,13 @@ function renderTxList(data, target, showDelete) {
         <div style="font-size:9px; color:var(--text3)">${t.date}</div>
       </div>
       ${showDelete ? `<div onclick="deleteTx('${t.id}')" style="margin-left:10px; color:var(--text3); cursor:pointer"><i data-lucide="trash-2" style="width:16px"></i></div>` : ''}
-    </div>`).join('') || '<p style="text-align:center;color:var(--text3);padding:20px">Belum ada transaksi</p>';
+    </div>`).join('') || '<p style="text-align:center;color:var(--text3);padding:20px">Kosong</p>';
   lucide.createIcons();
 }
 
-function renderBudgetSettings() {
-    const container = document.getElementById('budgetSettingsContainer');
-    container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai').map(c => `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px">${c}</span>
-        <input type="number" class="form-control" style="width:140px;margin:0;" id="input_b_${c.replace(/\s/g,'_')}" value="${budgets[c]||0}">
-      </div>`).join('');
-}
-
-// UTILITIES
-function setType(t) {
-  currentType = t;
-  document.getElementById('btn-exp').className = t === 'expense' ? 'btn-type active-exp' : 'btn-type';
-  document.getElementById('btn-inc').className = t === 'income' ? 'btn-type active-inc' : 'btn-type';
-  document.getElementById('accountSelector').style.display = t === 'expense' ? 'block' : 'none';
-  const cats = t === 'expense' ? EXP_CATS : INC_CATS;
-  document.getElementById('txCategory').innerHTML = cats.map(c => `<option value="${c}">${ICONS[c]||'🔹'} ${c}</option>`).join('');
-}
-
-function showPage(n, el) { 
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); 
-    document.getElementById('page-'+n).classList.add('active'); 
-    document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-    if(el) el.classList.add('active');
-    if(n === 'settings') renderBudgetSettings();
-    if(n === 'transactions') renderTransactions();
-    lucide.createIcons();
-}
-
-function checkCategory(v) { document.getElementById('accountSelector').style.display = (v === 'Tarik Tunai') ? 'none' : 'block'; }
-function fmt(n) { return 'Rp' + Math.abs(n).toLocaleString('id-ID'); }
 function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); }
 function saveUrl() { localStorage.setItem(GAS_URL_KEY, document.getElementById('gasUrl').value); gasUrl = document.getElementById('gasUrl').value; }
-function saveBudgets() {
-    EXP_CATS.forEach(c => { 
-        const el = document.getElementById(`input_b_${c.replace(/\s/g,'_')}`);
-        if(el) budgets[c] = parseFloat(el.value) || 0;
-    });
-    saveLocal(); showToast('✓ Budget Disimpan'); renderDashboard(); syncToCloud();
-}
-function renderTransactions() { renderTxList(transactions, 'allTxList', true); }
-function clearData() { if(confirm('Hapus semua data permanen?')) { localStorage.clear(); location.reload(); } }
+function clearData() { if(confirm('Hapus semua?')) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
 </html>
