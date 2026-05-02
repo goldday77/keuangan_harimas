@@ -106,11 +106,7 @@
     <input type="url" id="gasUrl" class="form-control" oninput="saveUrl()">
     <button class="btn-primary" style="background:var(--surface2); font-size:13px;" onclick="testConnection()">Sinkron Data</button>
   </div>
-  <div class="card">
-    <span class="balance-label">Target Budget Bulanan</span>
-    <div id="budgetSettingsContainer"></div>
-    <button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button>
-  </div>
+  <div class="card"><span class="balance-label">Target Budget Bulanan</span><div id="budgetSettingsContainer"></div><button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button></div>
   <button class="btn-primary" style="background:transparent; color:var(--danger); border:1px solid rgba(248,113,113,0.2)" onclick="clearData()">Reset Data</button>
 </div>
 
@@ -162,8 +158,11 @@ async function testConnection(silent = false) {
     try {
         const res = await fetch(url + '?action=getData');
         const data = await res.json();
-        // MIGRATION: Pastikan data cloud memiliki account
-        transactions = (data.transactions || []).map(t => ({...t, account: t.account || (t.category === 'Tarik Tunai' ? 'bank' : 'bank')}));
+        // LOGIKA PERBAIKAN: Hanya isi account jika memang kosong, jangan timpa data lama
+        transactions = (data.transactions || []).map(t => ({
+            ...t, 
+            account: t.account || (t.category === 'Tarik Tunai' ? 'bank' : 'bank')
+        }));
         budgets = data.budgets || {};
         saveLocal(); updateIndicator('success');
         if(!silent) showToast('✓ Sinkronisasi Berhasil');
@@ -176,13 +175,11 @@ async function syncToCloud() {
     if(!gasUrl) return true;
     updateIndicator('loading');
     try { 
-        // Menggunakan fetch POST dan menunggu respon
         await fetch(gasUrl, { 
             method:'POST', 
             mode:'no-cors', 
             body:JSON.stringify({ action:'saveAll', transactions, budgets }) 
         });
-        // Karena no-cors tidak bisa baca status 200, kita beri delay kecil untuk simulasi kepastian
         await new Promise(r => setTimeout(r, 800));
         updateIndicator('success');
         return true;
@@ -194,7 +191,8 @@ async function syncToCloud() {
 
 function init() {
   const localTx = JSON.parse(localStorage.getItem(DATA_KEY)) || [];
-  transactions = localTx.map(t => ({...t, account: t.account || (t.category === 'Tarik Tunai' ? 'bank' : 'bank')}));
+  // Pastikan data lokal juga aman
+  transactions = localTx.map(t => ({...t, account: t.account || 'bank'}));
   budgets = JSON.parse(localStorage.getItem(BUDGET_KEY)) || {};
   document.getElementById('txDate').value = new Date().toISOString().split('T')[0];
   document.getElementById('gasUrl').value = localStorage.getItem(GAS_URL_KEY) || '';
@@ -237,19 +235,7 @@ function renderDashboard() {
         else if (pct >= 85) { alertClass = 'alert-warning'; }
     }
 
-    container.innerHTML += `
-      <div class="card" style="margin-bottom:12px; padding:18px; border-color:${alertClass==='alert-danger'?'var(--danger)':'var(--border)'}">
-        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; align-items:center;">
-          <span style="font-weight:700;">${cat}${alertClass?`<span class="inline-alert ${alertClass}">!</span>`:''}</span>
-          <div style="text-align:right">
-            <div style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</div>
-            ${labelStatus}
-          </div>
-        </div>
-        <div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden;">
-          <div style="height:100%; width:${Math.min(pct, 100)}%; background:${alertClass==='alert-danger'?'var(--danger)':(alertClass==='alert-warning'?'var(--warning)':'var(--accent2)')}; transition:0.5s"></div>
-        </div>
-      </div>`;
+    container.innerHTML += `<div class="card" style="margin-bottom:12px; padding:18px; border-color:${alertClass==='alert-danger'?'var(--danger)':'var(--border)'}"><div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; align-items:center;"><span style="font-weight:700;">${cat}${alertClass?`<span class="inline-alert ${alertClass}">!</span>`:''}</span><div style="text-align:right"><div style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</div>${labelStatus}</div></div><div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden;"><div style="height:100%; width:${Math.min(pct, 100)}%; background:${alertClass==='alert-danger'?'var(--danger)':(alertClass==='alert-warning'?'var(--warning)':'var(--accent2)')}; transition:0.5s"></div></div></div>`;
   });
   renderTxList(transactions.slice(0, 5), 'recentTxList', false);
 }
@@ -260,7 +246,7 @@ async function addTransaction() {
   if(!amt) return;
 
   btn.disabled = true;
-  btn.textContent = "Menyimpan ke Cloud...";
+  btn.textContent = "Sinkronisasi Cloud...";
 
   const newTx = { 
       id: Date.now().toString(), 
@@ -272,22 +258,24 @@ async function addTransaction() {
       date: document.getElementById('txDate').value 
   };
   
-  // Simpan lokal dulu agar UI terasa cepat tapi jangan pindah halaman dulu
   const oldTransactions = [...transactions];
   transactions.unshift(newTx);
   
-  // TUNGGU CLOUD
   const success = await syncToCloud();
   
   if(success) {
       saveLocal(); 
-      amtInput.value = ''; noteInput.value = '';
+      // RESET FORM KE DEFAULT
+      amtInput.value = ''; 
+      noteInput.value = '';
+      accInput.value = 'bank'; // Kembalikan sumber dana ke Rekening
+      
       renderDashboard(); renderTransactions(); 
       showPage('dashboard', document.getElementById('tab-dashboard')); 
       showToast('✓ Berhasil Tersimpan');
   } else {
-      showToast('⚠️ Gagal Terhubung Cloud');
-      transactions = oldTransactions; // Revert data lokal jika benar-benar gagal
+      showToast('⚠️ Gagal Cloud, Coba Lagi');
+      transactions = oldTransactions;
   }
 
   btn.disabled = false;
@@ -296,11 +284,7 @@ async function addTransaction() {
 
 function renderBudgetSettings() {
     const container = document.getElementById('budgetSettingsContainer');
-    container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai').map(c => `
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span style="font-size:13px">${c} ${c==='Sedekah'?'(Auto 2.5%)':''}</span>
-        <input type="number" class="form-control" style="width:140px;margin:0;" id="input_b_${c.replace(/\s/g,'_')}" value="${budgets[c]||0}" ${c==='Sedekah'?'disabled style="opacity:0.5"':''}>
-      </div>`).join('');
+    container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai').map(c => `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:13px">${c} ${c==='Sedekah'?'(Auto 2.5%)':''}</span><input type="number" class="form-control" style="width:140px;margin:0;" id="input_b_${c.replace(/\s/g,'_')}" value="${budgets[c]||0}" ${c==='Sedekah'?'disabled style="opacity:0.5"':''}></div>`).join('');
 }
 
 async function saveBudgets() {
