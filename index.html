@@ -72,7 +72,13 @@
     <input type="number" id="txAmount" class="form-control" placeholder="Rp 0" inputmode="numeric">
     <span class="balance-label">Kategori</span>
     <select id="txCategory" class="form-control" onchange="checkCategory(this.value)"></select>
-    <div id="accountSelector"><span class="balance-label">Sumber Dana</span><select id="txAccount" class="form-control"><option value="bank">🏦 Rekening</option><option value="cash">💵 Cash</option></select></div>
+    <div id="accountSelector">
+        <span class="balance-label">Sumber Dana</span>
+        <select id="txAccount" class="form-control">
+            <option value="bank">🏦 Rekening</option>
+            <option value="cash">💵 Cash</option>
+        </select>
+    </div>
     <span class="balance-label">Keterangan</span>
     <input type="text" id="txNote" class="form-control" placeholder="Catatan...">
     <span class="balance-label">Tanggal</span>
@@ -120,30 +126,17 @@ function showToast(m) { const t=document.getElementById('toast'); t.textContent=
 async function enterApp() {
   const status = document.getElementById('loadingStatus');
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
-  
-  if (gasUrl) {
-    status.textContent = 'Kemana perginya uangku?'; // Muncul hanya jika ada URL & sedang sinkron
-    await testConnection(true);
-  }
-  
+  if (gasUrl) { status.textContent = 'Kemana perginya uangku?'; await testConnection(true); }
   document.getElementById('welcome-screen').style.opacity = '0';
-  setTimeout(() => {
-    document.getElementById('welcome-screen').style.display = 'none';
-    init();
-  }, 500);
+  setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 500);
 }
 
 async function testConnection(silent = false) {
     const icon = document.getElementById('iconTest');
     const statusText = document.getElementById('syncStatusText');
     const url = silent ? gasUrl : document.getElementById('gasUrl').value.trim();
-    
     if(!url) return;
-    if(!silent) {
-        icon.classList.add('spin');
-        statusText.textContent = 'Menghubungkan...';
-    }
-
+    if(!silent) { icon.classList.add('spin'); statusText.textContent = 'Menghubungkan...'; }
     try {
         const res = await fetch(url + '?action=getData');
         const data = await res.json();
@@ -151,20 +144,9 @@ async function testConnection(silent = false) {
         budgets = data.budgets || {};
         saveLocal();
         document.getElementById('syncIndicator').style.background = '#34d399';
-        if(!silent) {
-            showToast('✓ Sinkronisasi Berhasil');
-            statusText.textContent = 'Terakhir sinkron: Baru saja';
-            renderDashboard(); renderBudgetSettings(); renderTransactions();
-        }
-    } catch (e) {
-        if(!silent) {
-            showToast('✗ Gagal Hubungkan Cloud');
-            statusText.textContent = 'Gagal terhubung. Cek URL Anda.';
-        }
-    } finally {
-        // Blok ini PASTI dijalankan baik sukses maupun gagal
-        if(!silent) icon.classList.remove('spin');
-    }
+        if(!silent) { showToast('✓ Sinkronisasi Berhasil'); statusText.textContent = 'Terakhir sinkron: Baru saja'; renderDashboard(); renderBudgetSettings(); renderTransactions(); }
+    } catch (e) { if(!silent) { showToast('✗ Gagal Hubungkan Cloud'); statusText.textContent = 'Gagal terhubung. Cek URL Anda.'; }
+    } finally { if(!silent && icon) icon.classList.remove('spin'); }
 }
 
 function init() {
@@ -215,11 +197,20 @@ async function saveBudgets() {
 async function addTransaction() {
   const amtInput = document.getElementById('txAmount');
   const noteInput = document.getElementById('txNote');
+  const accInput = document.getElementById('txAccount');
   const amt = parseFloat(amtInput.value);
   if(!amt) return;
-  const tx = { id: Date.now().toString(), type: currentType, amount: amt, category: document.getElementById('txCategory').value, account: document.getElementById('txAccount').value, note: noteInput.value, date: document.getElementById('txDate').value };
+  
+  const tx = { id: Date.now().toString(), type: currentType, amount: amt, category: document.getElementById('txCategory').value, account: accInput.value, note: noteInput.value, date: document.getElementById('txDate').value };
+  
   transactions.unshift(tx);
-  saveLocal(); amtInput.value = ''; noteInput.value = '';
+  saveLocal(); 
+  
+  // RESET FORM & FORCE DEFAULT TO BANK
+  amtInput.value = ''; 
+  noteInput.value = '';
+  accInput.value = 'bank'; 
+  
   renderDashboard(); renderTransactions(); showPage('dashboard'); syncToCloud();
 }
 
