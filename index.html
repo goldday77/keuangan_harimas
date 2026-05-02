@@ -20,7 +20,6 @@
   
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; width: 100%; }
   
-  /* Style Tombol Form - All Purple Theme */
   .btn-type { flex: 1; padding: 14px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: all 0.3s ease; border: 1px solid transparent; color: var(--text3); background: var(--surface2); }
   .btn-type.active-exp { background: linear-gradient(135deg, var(--accent), #7c73ff); color: white; border: none; box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3); }
   .btn-type.active-inc { background: linear-gradient(135deg, #8b5cf6, var(--accent2)); color: white; border: none; box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3); }
@@ -43,7 +42,6 @@
   .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 20px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
   .toast.show { opacity: 1; }
 
-  /* Animasi Typewriter */
   .typing-active::after { content: '|'; animation: blink 0.7s infinite; margin-left: 2px; }
   @keyframes blink { 50% { opacity: 0; } }
 </style>
@@ -63,7 +61,6 @@
   <div id="syncIndicator" style="width:10px; height:10px; border-radius:50%; background:var(--text3);"></div>
 </nav>
 
-<!-- BERANDA -->
 <div class="page active" id="page-dashboard">
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
     <div class="card" style="padding: 16px;"><span class="balance-label">Rekening</span><div id="balBank" style="font-size: 18px; font-weight:700; font-family:'DM Mono'">Rp0</div></div>
@@ -73,7 +70,6 @@
   <div class="card"><span class="balance-label" style="margin-bottom:15px">Transaksi Terakhir</span><div id="recentTxList"></div></div>
 </div>
 
-<!-- INPUT -->
 <div class="page" id="page-add">
   <div class="card">
     <div style="display:flex; gap:12px; margin-bottom:20px; background:var(--surface2); padding:6px; border-radius:20px;">
@@ -96,12 +92,10 @@
   </div>
 </div>
 
-<!-- RIWAYAT -->
 <div class="page" id="page-transactions">
   <div class="card"><span class="balance-label" style="margin-bottom:15px">Riwayat Lengkap</span><div id="allTxList"></div></div>
 </div>
 
-<!-- SETELAN -->
 <div class="page" id="page-settings">
   <div class="card">
     <span class="balance-label">Google Sheets URL</span>
@@ -134,7 +128,7 @@ function showToast(m) { const t=document.getElementById('toast'); t.textContent=
 
 async function typeEffect(text) {
     const el = document.getElementById('loadingStatus');
-    el.classList.add('typing-active'); // Animasi | baru muncul di sini
+    el.classList.add('typing-active');
     el.textContent = "";
     for (let i = 0; i < text.length; i++) {
         el.textContent += text[i];
@@ -148,18 +142,14 @@ async function typeEffect(text) {
 }
 
 async function enterApp() {
-  const statusEl = document.getElementById('loadingStatus');
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
-  
   if (gasUrl) {
     await typeEffect("Kemana perginya uangku");
     await testConnection(true);
   } else {
-    // Jika tidak ada URL, beri jeda sebentar lalu masuk
-    statusEl.textContent = "Siap digunakan";
+    document.getElementById('loadingStatus').textContent = "Siap digunakan";
     await new Promise(r => setTimeout(r, 800));
   }
-  
   clearInterval(qInterval);
   document.getElementById('welcome-screen').style.opacity = '0';
   setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 800);
@@ -180,7 +170,7 @@ async function testConnection(silent = false) {
         document.getElementById('syncIndicator').style.background = '#34d399';
         if(!silent) { showToast('✓ Sinkronisasi Berhasil'); statusText.textContent = 'Terakhir sinkron: Baru saja'; renderDashboard(); renderBudgetSettings(); renderTransactions(); }
     } catch (e) { 
-        if(!silent) { showToast('✗ Gagal Hubungkan Cloud'); statusText.textContent = 'Gagal terhubung. Cek URL Anda.'; }
+        if(!silent) { showToast('✗ Gagal Hubungkan Cloud'); statusText.textContent = 'Gagal terhubung.'; }
     } finally { if(!silent && icon) icon.classList.remove('spin'); }
 }
 
@@ -210,18 +200,36 @@ function renderDashboard() {
   
   const container = document.getElementById('budgetBars');
   container.innerHTML = '';
+  
+  // Render budget progress bars
   EXP_CATS.filter(c => budgets[c] > 0 && c !== 'Tarik Tunai').forEach(cat => {
     const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
     const target = budgets[cat];
     const pct = Math.min((spent / target) * 100, 100);
-    container.innerHTML += `<div class="card" style="margin-bottom:10px; padding:15px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span style="font-weight:600">${cat}</span><span>${fmt(spent)} / ${fmt(target)}</span></div><div style="height:6px; background:var(--border); border-radius:10px; overflow:hidden"><div style="height:100%; width:${pct}%; background:${pct>=100?'var(--danger)':'var(--accent)'}"></div></div></div>`;
+    // Logic alert: merah jika 100% atau lebih
+    const barColor = (spent >= target) ? 'var(--danger)' : 'var(--accent2)';
+    
+    container.innerHTML += `
+      <div class="card" style="margin-bottom:12px; padding:18px">
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px">
+          <span style="font-weight:700">${cat}</span>
+          <span style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</span>
+        </div>
+        <div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden; border:1px solid var(--border2)">
+          <div style="height:100%; width:${pct}%; background:${barColor}; transition:0.5s ease-out"></div>
+        </div>
+      </div>`;
   });
   renderTxList(transactions.slice(0, 5), 'recentTxList', false);
 }
 
 function renderBudgetSettings() {
     const container = document.getElementById('budgetSettingsContainer');
-    container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai').map(c => `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:13px">${c}</span><input type="number" class="form-control" style="width:140px;margin:0;padding:8px 12px" id="input_b_${c.replace(/\s/g,'_')}" value="${budgets[c]||0}"></div>`).join('');
+    container.innerHTML = EXP_CATS.filter(c => c !== 'Tarik Tunai').map(c => `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span style="font-size:13px">${c}</span>
+        <input type="number" class="form-control" style="width:140px;margin:0;padding:8px 12px" id="input_b_${c.replace(/\s/g,'_')}" value="${budgets[c]||0}">
+      </div>`).join('');
 }
 
 async function saveBudgets() {
@@ -242,7 +250,7 @@ async function addTransaction() {
 }
 
 function deleteTx(id) {
-    if(!confirm('Hapus transaksi ini?')) return;
+    if(!confirm('Hapus transaksi?')) return;
     transactions = transactions.filter(t => t.id !== id);
     saveLocal(); renderDashboard(); renderTransactions(); syncToCloud();
 }
@@ -256,15 +264,8 @@ function setType(t) {
   currentType = t;
   const btnExp = document.getElementById('btn-exp');
   const btnInc = document.getElementById('btn-inc');
-  
-  if (t === 'expense') {
-      btnExp.className = 'btn-type active-exp';
-      btnInc.className = 'btn-type';
-  } else {
-      btnExp.className = 'btn-type';
-      btnInc.className = 'btn-type active-inc';
-  }
-  
+  btnExp.className = t === 'expense' ? 'btn-type active-exp' : 'btn-type';
+  btnInc.className = t === 'income' ? 'btn-type active-inc' : 'btn-type';
   document.getElementById('accountSelector').style.display = t === 'expense' ? 'block' : 'none';
   const cats = t === 'expense' ? EXP_CATS : INC_CATS;
   document.getElementById('txCategory').innerHTML = cats.map(c => `<option value="${c}">${ICONS[c]||'🔹'} ${c}</option>`).join('');
@@ -277,7 +278,6 @@ function showPage(n, el) {
     document.getElementById('page-'+n).classList.add('active'); 
     document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
     if(el) el.classList.add('active');
-    if(n === 'settings') renderBudgetSettings();
     lucide.createIcons();
 }
 function renderTransactions() { renderTxList(transactions, 'allTxList', true); }
