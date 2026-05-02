@@ -37,6 +37,7 @@
   .inline-alert { width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; margin-left: 8px; vertical-align: middle; color: white; }
   .alert-danger { background: var(--danger); animation: pulse 1s infinite; }
   .alert-warning { background: var(--warning); color: #000; }
+  .alert-success { background: var(--success); color: #000; }
 
   @keyframes pulse { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.1); } 100% { opacity: 1; transform: scale(1); } }
   .typing-active::after { content: '|'; animation: cursorBlink 0.7s infinite; }
@@ -182,49 +183,76 @@ function init() {
 }
 
 function renderDashboard() {
-  let bank = 0, cash = 0, totalIncomeThisMonth = 0;
+  let bank = 0, cash = 0, totalIncomeEver = 0;
   const now = new Date();
-  const currentMonth = now.getMonth(), currentYear = now.getFullYear();
+  
+  // Ambil tanggal pertama transaksi untuk hitung selisih bulan (Carryover Logic)
+  const firstDate = transactions.length > 0 ? new Date(transactions[transactions.length - 1].date) : now;
+  const diffMonths = (now.getFullYear() - firstDate.getFullYear()) * 12 + (now.getMonth() - firstDate.getMonth()) + 1;
 
   transactions.forEach(t => {
     const amt = Number(t.amount);
-    const tDate = new Date(t.date);
-    if (t.type === 'income') bank += amt;
-    else {
+    if (t.type === 'income') {
+        bank += amt;
+        totalIncomeEver += amt;
+    } else {
       if (t.category === 'Tarik Tunai') { bank -= amt; cash += amt; }
-      else { 
-        // PERBAIKAN: Memastikan account terbaca dengan benar dari data tersimpan
-        (t.account === 'cash') ? cash -= amt : bank -= amt; 
-      }
-    }
-    if (t.type === 'income' && tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-        totalIncomeThisMonth += amt;
+      else { (t.account === 'cash') ? cash -= amt : bank -= amt; }
     }
   });
 
   document.getElementById('balBank').textContent = fmt(bank);
   document.getElementById('balCash').textContent = fmt(cash);
-  budgets['Sedekah'] = totalIncomeThisMonth * 0.025;
+  
+  // Sedekah adalah 2.5% dari TOTAL pemasukan selama ini
+  budgets['Sedekah'] = totalIncomeEver * 0.025;
 
   const container = document.getElementById('budgetBars');
   container.innerHTML = '';
   
-  EXP_CATS.filter(c => budgets[c] > 0 && c !== 'Tarik Tunai').forEach(cat => {
-    const spent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
-    const target = budgets[cat];
-    const pct = (spent / target) * 100;
-    let hasAlert = false, alertType = 'alert-danger';
-    if (OBLIGATORY_CATS.includes(cat)) { if (pct < 100) hasAlert = true; } 
-    else { if (pct >= 80) { hasAlert = true; alertType = (pct >= 100) ? 'alert-danger' : 'alert-warning'; } }
+  EXP_CATS.filter(c => (budgets[c] > 0 || c === 'Sedekah') && c !== 'Tarik Tunai').forEach(cat => {
+    const totalSpent = transactions.filter(t => t.category === cat && t.type === 'expense').reduce((s,t) => s + Number(t.amount), 0);
+    
+    // Carryover Logic: Target Akumulasi = Budget Bulanan * Jumlah Bulan Berjalan
+    // Kecuali Sedekah yang sudah dihitung dari totalIncomeEver di atas
+    const cumulativeTarget = (cat === 'Sedekah') ? budgets['Sedekah'] : (budgets[cat] * diffMonths);
+    
+    const pct = (totalSpent / cumulativeTarget) * 100;
+    
+    let hasAlert = false, alertType = 'alert-danger', labelStatus = '';
+    
+    if (OBLIGATORY_CATS.includes(cat)) {
+        // Jika wajib: Alert jika pembayaran < target (belum lunas)
+        if (totalSpent < cumulativeTarget) {
+            hasAlert = true; 
+            alertType = 'alert-warning';
+            labelStatus = `<span style="color:var(--warning); font-size:10px"> (-${fmt(cumulativeTarget - totalSpent)})</span>`;
+        } else if (totalSpent > cumulativeTarget) {
+            labelStatus = `<span style="color:var(--success); font-size:10px"> (+${fmt(totalSpent - cumulativeTarget)})</span>`;
+        }
+    } else {
+        // Jika keinginan: Alert jika pengeluaran > target (overbudget)
+        if (totalSpent > cumulativeTarget) {
+            hasAlert = true; 
+            alertType = 'alert-danger';
+            labelStatus = `<span style="color:var(--danger); font-size:10px"> (+${fmt(totalSpent - cumulativeTarget)})</span>`;
+        } else if (pct >= 85) {
+            hasAlert = true;
+            alertType = 'alert-warning';
+        }
+    }
 
     container.innerHTML += `
       <div class="card" style="margin-bottom:12px; padding:18px; border-color: ${hasAlert && alertType === 'alert-danger' ? 'var(--danger)' : 'var(--border)'}">
         <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; align-items:center;">
           <span style="font-weight:700;">${cat}${hasAlert ? `<span class="inline-alert ${alertType}">!</span>` : ''}</span>
-          <span style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</span>
+          <div style="text-align:right">
+            <div style="font-family:'DM Mono'">${fmt(totalSpent)} / ${fmt(cumulativeTarget)}</div>
+            ${labelStatus}
+          </div>
         </div>
         <div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden;">
-          <div style="height:100%; width:${Math.min(pct, 100)}%; background:${hasAlert && alertType === 'alert-danger' ? 'var(--danger)' : 'var(--accent2)'}; transition:0.5s"></div>
+          <div style="height:100%; width:${Math.min(pct, 100)}%; background:${hasAlert ? (alertType === 'alert-danger' ? 'var(--danger)' : 'var(--warning)') : 'var(--accent2)'}; transition:0.5s"></div>
         </div>
       </div>`;
   });
@@ -254,18 +282,7 @@ function addTransaction() {
   const amtInput = document.getElementById('txAmount'), noteInput = document.getElementById('txNote'), accInput = document.getElementById('txAccount');
   const amt = parseFloat(amtInput.value);
   if(!amt) return;
-  
-  // PERBAIKAN: Memastikan atribut 'account' tersimpan secara eksplisit
-  const newTx = { 
-    id: Date.now().toString(), 
-    type: currentType, 
-    amount: amt, 
-    category: document.getElementById('txCategory').value, 
-    account: currentType === 'income' ? 'bank' : accInput.value, 
-    note: noteInput.value, 
-    date: document.getElementById('txDate').value 
-  };
-  
+  const newTx = { id: Date.now().toString(), type: currentType, amount: amt, category: document.getElementById('txCategory').value, account: currentType === 'income' ? 'bank' : accInput.value, note: noteInput.value, date: document.getElementById('txDate').value };
   transactions.unshift(newTx);
   saveLocal(); 
   amtInput.value = ''; noteInput.value = ''; accInput.value = 'bank';
@@ -315,10 +332,7 @@ function renderTxList(data, target, showDelete) {
   lucide.createIcons();
 }
 
-function saveLocal() { 
-  localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); 
-  localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); 
-}
+function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); }
 function saveUrl() { localStorage.setItem(GAS_URL_KEY, document.getElementById('gasUrl').value); gasUrl = document.getElementById('gasUrl').value; }
 function clearData() { if(confirm('Hapus semua?')) { localStorage.clear(); location.reload(); } }
 </script>
