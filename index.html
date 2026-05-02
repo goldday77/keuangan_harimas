@@ -109,10 +109,10 @@
 </div>
 
 <nav class="tab-bar">
-  <div class="tab-item active" onclick="showPage('dashboard', this)"><i data-lucide="layout-dashboard"></i><span>Beranda</span></div>
-  <div class="tab-item" onclick="showPage('add', this)"><i data-lucide="plus-circle"></i><span>Input</span></div>
-  <div class="tab-item" onclick="showPage('transactions', this)"><i data-lucide="list"></i><span>Riwayat</span></div>
-  <div class="tab-item" onclick="showPage('settings', this)"><i data-lucide="settings-2"></i><span>Setelan</span></div>
+  <div id="tab-dashboard" class="tab-item active" onclick="showPage('dashboard', this)"><i data-lucide="layout-dashboard"></i><span>Beranda</span></div>
+  <div id="tab-add" class="tab-item" onclick="showPage('add', this)"><i data-lucide="plus-circle"></i><span>Input</span></div>
+  <div id="tab-transactions" class="tab-item" onclick="showPage('transactions', this)"><i data-lucide="list"></i><span>Riwayat</span></div>
+  <div id="tab-settings" class="tab-item" onclick="showPage('settings', this)"><i data-lucide="settings-2"></i><span>Setelan</span></div>
 </nav>
 
 <script>
@@ -189,15 +189,11 @@ function renderDashboard() {
   transactions.forEach(t => {
     const amt = Number(t.amount);
     const tDate = new Date(t.date);
-    
-    // Hitung Saldo Real-time
     if (t.type === 'income') bank += amt;
     else {
       if (t.category === 'Tarik Tunai') { bank -= amt; cash += amt; }
       else { (t.account === 'cash') ? cash -= amt : bank -= amt; }
     }
-
-    // Hitung Income bulan ini untuk Sedekah Otomatis
     if (t.type === 'income' && tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
         totalIncomeThisMonth += amt;
     }
@@ -205,8 +201,6 @@ function renderDashboard() {
 
   document.getElementById('balBank').textContent = fmt(bank);
   document.getElementById('balCash').textContent = fmt(cash);
-  
-  // LOGIKA SEDEKAH OTOMATIS (2.5%)
   budgets['Sedekah'] = totalIncomeThisMonth * 0.025;
 
   const container = document.getElementById('budgetBars');
@@ -217,7 +211,6 @@ function renderDashboard() {
     const target = budgets[cat];
     const pct = (spent / target) * 100;
     let hasAlert = false, alertType = 'alert-danger';
-    
     if (OBLIGATORY_CATS.includes(cat)) { if (pct < 100) hasAlert = true; } 
     else { if (pct >= 80) { hasAlert = true; alertType = (pct >= 100) ? 'alert-danger' : 'alert-warning'; } }
 
@@ -247,7 +240,7 @@ function renderBudgetSettings() {
 
 function saveBudgets() {
     EXP_CATS.forEach(c => { 
-        if (c === 'Sedekah') return; // Skip sedekah karena auto
+        if (c === 'Sedekah') return;
         const el = document.getElementById(`input_b_${c.replace(/\s/g,'_')}`);
         if(el) budgets[c] = parseFloat(el.value) || 0;
     });
@@ -261,7 +254,10 @@ function addTransaction() {
   transactions.unshift({ id: Date.now().toString(), type: currentType, amount: amt, category: document.getElementById('txCategory').value, account: accInput.value, note: noteInput.value, date: document.getElementById('txDate').value });
   saveLocal(); 
   amtInput.value = ''; noteInput.value = ''; accInput.value = 'bank';
-  renderDashboard(); renderTransactions(); showPage('dashboard'); syncToCloud(); showToast('✓ Tersimpan');
+  renderDashboard(); renderTransactions(); 
+  // PERBAIKAN: Memanggil showPage dengan elemen tab Beranda agar icon berubah warna
+  showPage('dashboard', document.getElementById('tab-dashboard')); 
+  syncToCloud(); showToast('✓ Tersimpan');
 }
 
 function deleteTx(id) { if(!confirm('Hapus?')) return; transactions = transactions.filter(t => t.id !== id); saveLocal(); renderDashboard(); renderTransactions(); syncToCloud(); }
