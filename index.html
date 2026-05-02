@@ -20,10 +20,10 @@
   
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; width: 100%; }
   
-  /* Style Tombol Form */
+  /* Style Tombol Form - All Purple Theme */
   .btn-type { flex: 1; padding: 14px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: all 0.3s ease; border: 1px solid transparent; color: var(--text3); background: var(--surface2); }
   .btn-type.active-exp { background: linear-gradient(135deg, var(--accent), #7c73ff); color: white; border: none; box-shadow: 0 4px 15px rgba(108, 99, 255, 0.3); }
-  .btn-type.active-inc { background: linear-gradient(135deg, var(--success), #10b981); color: white; border: none; box-shadow: 0 4px 15px rgba(52, 211, 153, 0.3); }
+  .btn-type.active-inc { background: linear-gradient(135deg, #8b5cf6, var(--accent2)); color: white; border: none; box-shadow: 0 4px 15px rgba(167, 139, 250, 0.3); }
 
   .btn-primary { width: 100%; padding: 16px; background: linear-gradient(135deg, var(--accent), #7c73ff); border-radius: 18px; color: white; font-weight: 600; cursor: pointer; border:none; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.2s; }
   .btn-primary:active { transform: scale(0.98); }
@@ -44,7 +44,7 @@
   .toast.show { opacity: 1; }
 
   /* Animasi Typewriter */
-  .typing-text::after { content: '|'; animation: blink 0.7s infinite; margin-left: 2px; }
+  .typing-active::after { content: '|'; animation: blink 0.7s infinite; margin-left: 2px; }
   @keyframes blink { 50% { opacity: 0; } }
 </style>
 </head>
@@ -53,7 +53,7 @@
 <div id="welcome-screen">
   <div style="font-size:28px; font-weight:800; margin-bottom:20px;">Keuangan <span style="color:var(--accent2)">Harimas</span></div>
   <button class="btn-primary" style="width:200px" id="btnStart" onclick="enterApp()">Mulai Aplikasi</button>
-  <div id="loadingStatus" class="typing-text" style="margin-top:25px; font-size:14px; color:var(--accent2); font-family:'DM Mono'; letter-spacing: -0.5px; min-height: 20px;"></div>
+  <div id="loadingStatus" style="margin-top:25px; font-size:14px; color:var(--accent2); font-family:'DM Mono'; letter-spacing: -0.5px; min-height: 20px;"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -67,7 +67,7 @@
 <div class="page active" id="page-dashboard">
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
     <div class="card" style="padding: 16px;"><span class="balance-label">Rekening</span><div id="balBank" style="font-size: 18px; font-weight:700; font-family:'DM Mono'">Rp0</div></div>
-    <div class="card" style="padding: 16px;"><span class="balance-label">Cash</span><div id="balCash" style="font-size: 18px; font-weight:700; font-family:'DM Mono'; color:var(--success)">Rp0</div></div>
+    <div class="card" style="padding: 16px;"><span class="balance-label">Cash</span><div id="balCash" style="font-size: 18px; font-weight:700; font-family:'DM Mono'; color:var(--accent2)">Rp0</div></div>
   </div>
   <div id="budgetBars"></div>
   <div class="card"><span class="balance-label" style="margin-bottom:15px">Transaksi Terakhir</span><div id="recentTxList"></div></div>
@@ -132,15 +132,14 @@ let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense', qInte
 
 function showToast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 
-// Animasi Ketik & Simbol ?
 async function typeEffect(text) {
     const el = document.getElementById('loadingStatus');
+    el.classList.add('typing-active'); // Animasi | baru muncul di sini
     el.textContent = "";
     for (let i = 0; i < text.length; i++) {
         el.textContent += text[i];
         await new Promise(r => setTimeout(r, 60));
     }
-    // Start question marks loop
     let count = 0;
     qInterval = setInterval(() => {
         count = (count + 1) % 5;
@@ -149,13 +148,16 @@ async function typeEffect(text) {
 }
 
 async function enterApp() {
-  const btnStart = document.getElementById('btnStart');
-  btnStart.style.display = 'none';
+  const statusEl = document.getElementById('loadingStatus');
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
   
   if (gasUrl) {
     await typeEffect("Kemana perginya uangku");
     await testConnection(true);
+  } else {
+    // Jika tidak ada URL, beri jeda sebentar lalu masuk
+    statusEl.textContent = "Siap digunakan";
+    await new Promise(r => setTimeout(r, 800));
   }
   
   clearInterval(qInterval);
@@ -250,7 +252,6 @@ async function syncToCloud() {
     try { await fetch(gasUrl, { method:'POST', mode:'no-cors', body:JSON.stringify({ action:'saveAll', transactions, budgets }) }); document.getElementById('syncIndicator').style.background = '#34d399'; } catch(e) {}
 }
 
-// Logic Ganti Tipe & Warna Tombol
 function setType(t) {
   currentType = t;
   const btnExp = document.getElementById('btn-exp');
@@ -289,7 +290,7 @@ function renderTxList(data, target, showDelete) {
         <div style="font-size:10px; color:var(--text3)">${t.account==='cash'?'💵 Cash':'🏦 Bank'} • ${t.note||'-'}</div>
       </div>
       <div style="text-align:right">
-        <div style="font-weight:700; color:${t.type==='income'?'var(--success)':'var(--text)'}">${fmt(t.amount)}</div>
+        <div style="font-weight:700; color:${t.type==='income'?'var(--accent2)':'var(--text)'}">${fmt(t.amount)}</div>
         <div style="font-size:9px; color:var(--text3)">${t.date}</div>
       </div>
       ${showDelete ? `<div onclick="deleteTx('${t.id}')" style="margin-left:10px; color:var(--text3); cursor:pointer"><i data-lucide="trash-2" style="width:16px"></i></div>` : ''}
