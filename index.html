@@ -12,17 +12,15 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
   
-  /* Welcome Screen */
   #welcome-screen { position: fixed; inset: 0; z-index: 9999; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.8s ease-in-out; }
-  
   .nav-bar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; backdrop-filter: blur(20px); background: rgba(10,10,15,0.85); border-bottom: 1px solid var(--border); padding: 0 20px; height: 60px; display: flex; align-items: center; justify-content: space-between; }
   .page { display: none; padding: 80px 16px 120px; max-width: 500px; margin: 0 auto; animation: fadeIn 0.3s ease; width: 100%; }
   .page.active { display: block; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; width: 100%; position: relative; overflow: hidden; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 22px; margin-bottom: 16px; width: 100%; position: relative; }
   
-  .btn-type { flex: 1; padding: 14px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: 0.3s; color: var(--text3); background: var(--surface2); border: none; cursor: pointer; }
+  .btn-type { flex: 1; padding: 14px; border-radius: 16px; font-weight: 600; font-size: 14px; transition: 0.3s; color: var(--text3); background: var(--surface2); border: none; }
   .btn-type.active-exp { background: linear-gradient(135deg, var(--accent), #7c73ff); color: white; }
   .btn-type.active-inc { background: linear-gradient(135deg, #8b5cf6, var(--accent2)); color: white; }
 
@@ -36,13 +34,13 @@
   .balance-label { font-size: 10px; color: var(--text3); text-transform: uppercase; font-weight: 700; margin-bottom: 6px; letter-spacing: 1px; display: block; }
   .tx-item { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); position: relative; }
   
-  /* Badge Alert Tanda Seru */
-  .alert-badge { position: absolute; top: 12px; right: 12px; background: var(--danger); color: white; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 12px; animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(248,113,113,0.7); } 70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(248,113,113,0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(248,113,113,0); } }
+  /* Alert Inline Style */
+  .inline-alert { background: var(--danger); color: white; width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; font-size: 11px; margin-left: 6px; vertical-align: middle; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.5; } }
 
-  .typing-active::after { content: '|'; animation: blink 0.7s infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-  .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 20 image_a46c1b.png0px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
+  .typing-active::after { content: '|'; animation: cursorBlink 0.7s infinite; }
+  @keyframes cursorBlink { 50% { opacity: 0; } }
+  .toast { position: fixed; bottom: 110px; left: 50%; transform: translateX(-50%); background: var(--surface2); border: 1px solid var(--border2); border-radius: 100px; padding: 10px 20px; font-size: 12px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
   .toast.show { opacity: 1; }
 </style>
 </head>
@@ -88,7 +86,7 @@
     <input type="text" id="txNote" class="form-control" placeholder="Catatan...">
     <span class="balance-label">Tanggal</span>
     <input type="date" id="txDate" class="form-control">
-    <button class="btn-primary" id="btnSaveTx" onclick="addTransaction()">Simpan Transaksi</button>
+    <button class="btn-primary" onclick="addTransaction()">Simpan Transaksi</button>
   </div>
 </div>
 
@@ -99,11 +97,11 @@
 <div class="page" id="page-settings">
   <div class="card">
     <span class="balance-label">Google Sheets URL</span>
-    <input type="url" id="gasUrl" class="form-control" placeholder="https://..." oninput="saveUrl()">
-    <button class="btn-primary" style="background:var(--surface2); font-size:13px;" onclick="testConnection()">Test & Sinkron Data</button>
+    <input type="url" id="gasUrl" class="form-control" oninput="saveUrl()">
+    <button class="btn-primary" style="background:var(--surface2); font-size:13px;" onclick="testConnection()">Sinkron Data</button>
   </div>
-  <div class="card"><span class="balance-label">Target Budget Bulanan</span><div id="budgetSettingsContainer"></div><button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button></div>
-  <button class="btn-primary" style="background:transparent; color:var(--danger); border:1px solid rgba(248,113,113,0.2)" onclick="clearData()">Reset Semua Data</button>
+  <div class="card"><span class="balance-label">Target Budget</span><div id="budgetSettingsContainer"></div><button class="btn-primary" style="margin-top:20px" onclick="saveBudgets()">Simpan Budget</button></div>
+  <button class="btn-primary" style="background:transparent; color:var(--danger); border:1px solid rgba(248,113,113,0.2)" onclick="clearData()">Reset Data</button>
 </div>
 
 <nav class="tab-bar">
@@ -115,22 +113,36 @@
 
 <script>
 const GAS_URL_KEY = 'fOS_url', DATA_KEY = 'fOS_tx', BUDGET_KEY = 'fOS_bg';
-const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Belanja Bulanan','Jajan','Lain-lain','Kas Kantor','Tarik Tunai','Sedekah'];
+const EXP_CATS = ['Makan Pokok','Bensin','Sewa Kost','Main Bola','Investasi','Belanja Bulanan','Jajan','Lain-lain','Kas Kantor','Kopi Kantor','Iuran Kantor','Tarik Tunai','Sedekah'];
 const INC_CATS = ['Gaji', 'Bonus', 'Freelance', 'Lain-lain'];
-const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Tarik Tunai':'🏧','Sedekah':'🤲'};
+const ICONS = {'Gaji':'💰','Makan Pokok':'🍚','Bensin':'⛽','Sewa Kost':'🏠','Main Bola':'⚽','Investasi':'📈','Belanja Bulanan':'🛒','Jajan':'🧋','Lain-lain':'📦','Kas Kantor':'🗂️','Kopi Kantor':'☕','Iuran Kantor':'🎫','Tarik Tunai':'🏧','Sedekah':'🤲'};
 
 let transactions = [], budgets = {}, gasUrl = '', currentType = 'expense', qInterval;
 
 function showToast(m) { const t=document.getElementById('toast'); t.textContent=m; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),3000); }
 
+async function typeEffect(text) {
+    const el = document.getElementById('loadingStatus');
+    el.classList.add('typing-active');
+    el.textContent = "";
+    for (let i = 0; i < text.length; i++) {
+        el.textContent += text[i];
+        await new Promise(r => setTimeout(r, 60));
+    }
+    let count = 0;
+    qInterval = setInterval(() => {
+        count = (count + 1) % 6;
+        el.textContent = text + "?".repeat(count);
+    }, 300);
+}
+
 async function enterApp() {
-  const statusEl = document.getElementById('loadingStatus');
   gasUrl = localStorage.getItem(GAS_URL_KEY) || '';
   if (gasUrl) {
-    statusEl.classList.add('typing-active');
-    statusEl.textContent = "Sinkronisasi cloud...";
+    await typeEffect("kemana perginya uangku");
     await testConnection(true);
   }
+  clearInterval(qInterval);
   document.getElementById('welcome-screen').style.opacity = '0';
   setTimeout(() => { document.getElementById('welcome-screen').style.display = 'none'; init(); }, 800);
 }
@@ -153,10 +165,7 @@ function renderDashboard() {
     if (t.type === 'income') bank += amt;
     else {
       if (t.category === 'Tarik Tunai') { bank -= amt; cash += amt; }
-      else {
-        if (t.account === 'cash') cash -= amt;
-        else bank -= amt;
-      }
+      else { t.account === 'cash' ? cash -= amt : bank -= amt; }
     }
   });
   document.getElementById('balBank').textContent = fmt(bank);
@@ -172,9 +181,10 @@ function renderDashboard() {
 
     container.innerHTML += `
       <div class="card" style="margin-bottom:12px; padding:18px; border-color: ${isOver ? 'var(--danger)' : 'var(--border)'}">
-        ${isOver ? '<div class="alert-badge">!</div>' : ''}
-        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px">
-          <span style="font-weight:700; color:${isOver ? 'var(--danger)' : 'var(--text)'}">${cat}</span>
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:8px; align-items:center;">
+          <span style="font-weight:700; color:${isOver ? 'var(--danger)' : 'var(--text)'}">
+            ${cat}${isOver ? '<span class="inline-alert">!</span>' : ''}
+          </span>
           <span style="font-family:'DM Mono'">${fmt(spent)} / ${fmt(target)}</span>
         </div>
         <div style="height:8px; background:var(--surface2); border-radius:10px; overflow:hidden;">
@@ -195,7 +205,10 @@ function renderBudgetSettings() {
 }
 
 function saveBudgets() {
-    EXP_CATS.forEach(c => { if(c !== 'Tarik Tunai') budgets[c] = parseFloat(document.getElementById(`input_b_${c.replace(/\s/g,'_')}`).value) || 0; });
+    EXP_CATS.forEach(c => { if(c !== 'Tarik Tunai') {
+      const el = document.getElementById(`input_b_${c.replace(/\s/g,'_')}`);
+      if(el) budgets[c] = parseFloat(el.value) || 0;
+    }});
     saveLocal(); showToast('✓ Budget Disimpan'); renderDashboard(); syncToCloud();
 }
 
@@ -254,10 +267,10 @@ function renderTxList(data, target, showDelete) {
 }
 
 async function testConnection(silent = false) {
-    gasUrl = document.getElementById('gasUrl').value;
-    if(!gasUrl) return;
+    const url = document.getElementById('gasUrl').value || gasUrl;
+    if(!url) return;
     try {
-        const res = await fetch(gasUrl + '?action=getData');
+        const res = await fetch(url + '?action=getData');
         const data = await res.json();
         transactions = data.transactions || [];
         budgets = data.budgets || {};
@@ -273,7 +286,7 @@ async function syncToCloud() {
 }
 
 function saveLocal() { localStorage.setItem(DATA_KEY, JSON.stringify(transactions)); localStorage.setItem(BUDGET_KEY, JSON.stringify(budgets)); }
-function saveUrl() { localStorage.setItem(GAS_URL_KEY, document.getElementById('gasUrl').value); }
+function saveUrl() { localStorage.setItem(GAS_URL_KEY, document.getElementById('gasUrl').value); gasUrl = document.getElementById('gasUrl').value; }
 function clearData() { if(confirm('Hapus semua data?')) { localStorage.clear(); location.reload(); } }
 </script>
 </body>
