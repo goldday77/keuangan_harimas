@@ -138,21 +138,29 @@ async function syncFromSheet() {
       state.saldoCash     = Number(data.saldoCash) || 0;
       state.transaksi     = data.transaksi || [];
 
-      // MENGATASI BUDGET:
-      // Kita buat laci bulan sekarang, misal: "2026-06"
+      // MENGATASI BUDGET (Laci Bulan):
       const now = new Date();
       const currentMonth = now.getFullYear() + "-" + ("0" + (now.getMonth() + 1)).slice(-2);
       
-      // Masukkan data budget dari server ke dalam laci bulan ini
-      state.budget = {}; // Reset dulu
+      // Simpan data budget ke dalam laci bulan yang benar
+      state.budget = state.budget || {}; 
       state.budget[currentMonth] = data.budget || {}; 
 
-      console.log("Budget berhasil dipaksa masuk ke:", currentMonth, state.budget[currentMonth]);
+      console.log("Data diterima:", data);
 
+      // Simpan ke memori lokal
       saveLocal();
       
-      // Refresh halaman agar state yang baru benar-benar terbaca
-      location.reload();
+      // HANYA UPDATE TAMPILAN (Jangan reload halaman!)
+      if (typeof renderAll === "function") {
+        renderAll(); 
+      } else {
+        // Jika kamu tidak punya fungsi renderAll, 
+        // panggil fungsi yang biasa kamu gunakan untuk update UI dashboard/budget
+        console.log("Sinkronisasi selesai, silakan cek tab Budget.");
+      }
+      
+      alert("Sinkronisasi Berhasil!"); // Tambahkan ini untuk memastikan proses selesai
     }
   } catch(e) {
     console.error("Gagal sync:", e);
