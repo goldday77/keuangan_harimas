@@ -3,154 +3,207 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Catatan Keuangan v2</title>
+    <title>Finance App Pro</title>
     <style>
-        :root {
-            --primary: #2563eb;
-            --bg: #f8fafc;
-            --card: #ffffff;
-        }
-        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 20px; }
+        :root { --primary: #2563eb; --warning: #f59e0b; --danger: #ef4444; --success: #10b981; --bg: #f1f5f9; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; }
         .container { max-width: 500px; margin: auto; }
-        .card { background: var(--card); padding: 20px; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2 { margin-top: 0; font-size: 1.2rem; color: #1e293b; }
+        .card { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 15px; }
         
-        /* Dashboard Saldo */
-        .balance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .bal-box { background: #f1f5f9; padding: 15px; border-radius: 10px; text-align: center; }
-        .bal-box span { display: block; font-size: 0.8rem; color: #64748b; }
-        .bal-box strong { font-size: 1.1rem; color: var(--primary); }
+        .nav { display: flex; gap: 10px; margin-bottom: 15px; }
+        .nav button { flex: 1; padding: 10px; border: none; border-radius: 8px; background: #cbd5e1; cursor: pointer; font-weight: bold; }
+        .nav button.active { background: var(--primary); color: white; }
 
-        /* Form Style */
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-size: 0.9rem; font-weight: bold; }
-        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
-        button { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        button:disabled { background: #94a3b8; }
+        .balance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        .bal-box { background: #f8fafc; padding: 10px; border-radius: 10px; border-left: 4px solid var(--primary); }
+        .bal-box span { font-size: 0.75rem; color: #64748b; display: block; }
+        .bal-box strong { font-size: 1rem; color: #1e293b; }
+
+        .form-group { margin-bottom: 12px; }
+        label { display: block; font-size: 0.85rem; margin-bottom: 4px; font-weight: 600; }
+        input, select, textarea { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; box-sizing: border-box; }
         
-        #status { text-align: center; font-size: 0.9rem; margin-top: 10px; }
+        button.main-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        
+        .budget-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 0.9rem; }
+        .progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; margin-top: 4px; }
+        .progress-fill { height: 100%; transition: width 0.3s; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h2>Dashboard Saldo</h2>
         <div class="balance-grid">
-            <div class="bal-box">
-                <span>Saldo Rekening</span>
-                <strong id="display-rekening">Rp 0</strong>
-            </div>
-            <div class="bal-box">
-                <span>Saldo Cash</span>
-                <strong id="display-cash">Rp 0</strong>
-            </div>
+            <div class="bal-box"><span>Rekening</span><strong id="display-rekening">Rp 0</strong></div>
+            <div class="bal-box"><span>Cash</span><strong id="display-cash">Rp 0</strong></div>
         </div>
     </div>
 
-    <div class="card">
-        <h2>Input Transaksi</h2>
-        <form id="financeForm">
-            <div class="form-group">
-                <label>Jenis</label>
-                <select id="jenis" required>
-                    <option value="Pengeluaran">Pengeluaran</option>
-                    <option value="Pemasukan">Pemasukan</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Sumber Dana</label>
-                <select id="sumberDana" required>
-                    <option value="Rekening">Rekening</option>
-                    <option value="Cash">Cash (Tunai)</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Kategori</label>
-                <input type="text" id="kategori" placeholder="Contoh: Bensin, Makan, Tukin" required>
-            </div>
-            <div class="form-group">
-                <label>Jumlah (Rp)</label>
-                <input type="number" id="jumlah" placeholder="0" required>
-            </div>
-            <div class="form-group">
-                <label>Catatan</label>
-                <textarea id="catatan" rows="2"></textarea>
-            </div>
-            <button type="submit" id="submitBtn">Simpan Transaksi</button>
-        </form>
-        <div id="status"></div>
+    <div class="nav">
+        <button id="btn-transaksi" class="active" onclick="showTab('transaksi')">Transaksi</button>
+        <button id="btn-budget" onclick="showTab('budget')">Budgeting</button>
+    </div>
+
+    <div id="transaksi" class="tab-content active">
+        <div class="card">
+            <form id="formTransaksi">
+                <div class="form-group">
+                    <label>Jenis</label>
+                    <select id="jenis" onchange="filterKategori()">
+                        <option value="Pengeluaran">Pengeluaran</option>
+                        <option value="Pemasukan">Pemasukan</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select id="kategori" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Sumber Dana</label>
+                    <select id="sumberDana">
+                        <option value="Rekening">Rekening</option>
+                        <option value="Cash">Cash</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Jumlah</label>
+                    <input type="number" id="jumlah" required>
+                </div>
+                <button type="submit" class="main-btn">Simpan</button>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h3>Monitoring Budget</h3>
+            <div id="budget-monitor">Memuat data...</div>
+        </div>
+    </div>
+
+    <div id="budget" class="tab-content">
+        <div class="card">
+            <h3>Set Budget Bulanan</h3>
+            <div id="budget-inputs"></div>
+            <button onclick="saveBudgets()" class="main-btn" style="margin-top:15px; background: var(--success);">Simpan Semua Budget</button>
+        </div>
     </div>
 </div>
 
 <script>
-    // GANTI LINK DI BAWAH INI DENGAN URL /EXEC ANDA
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbybgPrQp232c4qWYkeLeCX8u-m5Tx9MlrvUVrbCTjFxLjHd80shlAeUonMgCq0Ok-lS/exec";
+    const SCRIPT_URL = "MASUKKAN_URL_EXEC_KAMU_DISINI";
+    
+    const KATEGORI_LIST = [
+        "Makan Pokok", "Bensin", "Sewa Kost", "Main Bola", "Investasi", 
+        "Belanja Bulanan", "Jajan", "Kas Kantor", "Kopi Kantor", 
+        "Iuran Kantor", "Sedekah", "Tarik Tunai", "Lain-lain"
+    ];
 
-    // Fungsi Ambil Data & Hitung Saldo
-    async function updateBalances() {
-        try {
-            const response = await fetch(SCRIPT_URL);
-            const data = await response.json();
-            
-            let rek = 0;
-            let csh = 0;
+    const PEMASUKAN_LIST = ["Gaji", "Tukin", "Uang Makan", "Lain-lain"];
 
-            data.forEach(item => {
-                let nominal = parseFloat(item.jumlah);
-                if (item.jenis === "Pemasukan") {
-                    if (item.sumberDana === "Rekening") rek += nominal;
-                    else csh += nominal;
-                } else {
-                    if (item.sumberDana === "Rekening") rek -= nominal;
-                    else csh -= nominal;
-                }
-            });
-
-            document.getElementById('display-rekening').innerText = "Rp " + rek.toLocaleString();
-            document.getElementById('display-cash').innerText = "Rp " + csh.toLocaleString();
-        } catch (e) {
-            console.error("Gagal update saldo", e);
-        }
+    function showTab(tab) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.nav button').forEach(el => el.classList.remove('active'));
+        document.getElementById(tab).classList.add('active');
+        document.getElementById('btn-' + tab).classList.add('active');
     }
 
-    // Fungsi Kirim Data
-    document.getElementById('financeForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('submitBtn');
-        const status = document.getElementById('status');
-        
-        btn.disabled = true;
-        status.innerText = "Mengirim...";
+    function filterKategori() {
+        const jenis = document.getElementById('jenis').value;
+        const select = document.getElementById('kategori');
+        select.innerHTML = "";
+        const list = (jenis === "Pengeluaran") ? KATEGORI_LIST : PEMASUKAN_LIST;
+        list.forEach(cat => {
+            let opt = document.createElement('option');
+            opt.value = cat;
+            opt.innerHTML = cat;
+            select.appendChild(opt);
+        });
+    }
 
+    async function loadData() {
+        const res = await fetch(SCRIPT_URL);
+        const data = await res.json();
+        renderUI(data);
+    }
+
+    function renderUI(data) {
+        let rek = 0, csh = 0, incomeBulanIni = 0;
+        let pengeluaranPerKat = {};
+
+        data.transaksi.forEach(t => {
+            let amt = parseFloat(t.jumlah);
+            if (t.jenis === "Pemasukan") {
+                if (t.sumberDana === "Rekening") rek += amt; else csh += amt;
+                if (t.kategori !== "Tarik Tunai") incomeBulanIni += amt;
+            } else {
+                if (t.sumberDana === "Rekening") rek -= amt; else csh -= amt;
+                pengeluaranPerKat[t.kategori] = (pengeluaranPerKat[t.kategori] || 0) + amt;
+            }
+        });
+
+        document.getElementById('display-rekening').innerText = "Rp " + rek.toLocaleString();
+        document.getElementById('display-cash').innerText = "Rp " + csh.toLocaleString();
+
+        // Render Budget Inputs & Monitor
+        let monitorHTML = "";
+        let inputHTML = "";
+        
+        KATEGORI_LIST.forEach(cat => {
+            if(cat === "Tarik Tunai") return;
+            
+            let limit = data.budget[cat] || 0;
+            if (cat === "Sedekah") limit = incomeBulanIni * 0.025; // Fix 2.5%
+
+            let used = pengeluaranPerKat[cat] || 0;
+            let percent = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+            let color = used > limit && limit > 0 ? 'var(--danger)' : 'var(--primary)';
+
+            monitorHTML += `
+                <div class="budget-item">
+                    <span>${cat}</span>
+                    <span>Rp ${used.toLocaleString()} / ${limit.toLocaleString()}</span>
+                </div>
+                <div class="progress-bar"><div class="progress-fill" style="width: ${percent}%; background: ${color}"></div></div>
+            `;
+
+            inputHTML += `
+                <div class="form-group">
+                    <label>${cat} ${cat === "Sedekah" ? "(Otomatis 2.5%)" : ""}</label>
+                    <input type="number" class="b-input" data-cat="${cat}" value="${data.budget[cat] || 0}" ${cat === "Sedekah" ? "disabled" : ""}>
+                </div>
+            `;
+        });
+        document.getElementById('budget-monitor').innerHTML = monitorHTML;
+        document.getElementById('budget-inputs').innerHTML = inputHTML;
+    }
+
+    async function saveBudgets() {
+        const budgets = {};
+        document.querySelectorAll('.b-input').forEach(input => {
+            budgets[input.dataset.cat] = input.value;
+        });
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'saveBudget', budgets: budgets }) });
+        alert("Budget disimpan!");
+        loadData();
+    }
+
+    document.getElementById('formTransaksi').addEventListener('submit', async (e) => {
+        e.preventDefault();
         const payload = {
             jenis: document.getElementById('jenis').value,
-            sumberDana: document.getElementById('sumberDana').value,
             kategori: document.getElementById('kategori').value,
-            jumlah: document.getElementById('jumlah').value,
-            catatan: document.getElementById('catatan').value
+            sumberDana: document.getElementById('sumberDana').value,
+            jumlah: document.getElementById('jumlah').value
         };
-
-        try {
-            await fetch(SCRIPT_URL, {
-                method: 'POST',
-                body: JSON.stringify(payload)
-            });
-            status.style.color = "green";
-            status.innerText = "Berhasil disimpan!";
-            document.getElementById('financeForm').reset();
-            updateBalances(); // Refresh saldo
-        } catch (error) {
-            status.style.color = "red";
-            status.innerText = "Gagal menyimpan data.";
-        } finally {
-            btn.disabled = false;
-        }
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+        document.getElementById('formTransaksi').reset();
+        loadData();
     });
 
-    // Jalankan update saldo saat pertama kali buka
-    updateBalances();
+    filterKategori();
+    loadData();
 </script>
-
 </body>
 </html>
