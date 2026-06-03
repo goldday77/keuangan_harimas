@@ -134,28 +134,28 @@ async function syncFromSheet() {
     const data = await res.json();
     
     if (data.ok) {
-      // Pastikan data masuk ke state aplikasi
       state.saldoRekening = Number(data.saldoRekening) || 0;
       state.saldoCash     = Number(data.saldoCash) || 0;
       state.transaksi     = data.transaksi || [];
-      state.budget        = data.budget || {};
 
-      // PENTING: Simpan ke memori lokal laptop
+      // MENGATASI BUDGET:
+      // Kita buat laci bulan sekarang, misal: "2026-06"
+      const now = new Date();
+      const currentMonth = now.getFullYear() + "-" + ("0" + (now.getMonth() + 1)).slice(-2);
+      
+      // Masukkan data budget dari server ke dalam laci bulan ini
+      state.budget = {}; // Reset dulu
+      state.budget[currentMonth] = data.budget || {}; 
+
+      console.log("Budget berhasil dipaksa masuk ke:", currentMonth, state.budget[currentMonth]);
+
       saveLocal();
       
-      // PENTING: Paksa aplikasi menggambar ulang semua elemen (termasuk budget)
-      if (typeof renderAll === "function") {
-        renderAll();
-      } else {
-        // Jika tidak ada fungsi renderAll, kita muat ulang halaman sebagai langkah terakhir
-        location.reload();
-      }
-      
-      console.log("Sinkronisasi berhasil!", state.budget);
+      // Refresh halaman agar state yang baru benar-benar terbaca
+      location.reload();
     }
   } catch(e) {
-    console.warn("Gagal sync dari Sheet:", e);
-    loadLocal();
+    console.error("Gagal sync:", e);
   }
 }
 
