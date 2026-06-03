@@ -132,15 +132,29 @@ async function syncFromSheet() {
   try {
     const res  = await fetch(GAS_URL + "?action=getAll", { method: "GET" });
     const data = await res.json();
+    
     if (data.ok) {
+      // Pastikan data masuk ke state aplikasi
       state.saldoRekening = Number(data.saldoRekening) || 0;
       state.saldoCash     = Number(data.saldoCash) || 0;
       state.transaksi     = data.transaksi || [];
       state.budget        = data.budget || {};
+
+      // PENTING: Simpan ke memori lokal laptop
+      saveLocal();
+      
+      // PENTING: Paksa aplikasi menggambar ulang semua elemen (termasuk budget)
+      if (typeof renderAll === "function") {
+        renderAll();
+      } else {
+        // Jika tidak ada fungsi renderAll, kita muat ulang halaman sebagai langkah terakhir
+        location.reload();
+      }
+      
+      console.log("Sinkronisasi berhasil!", state.budget);
     }
-    saveLocal();
   } catch(e) {
-    console.warn("Gagal sync dari Sheet, pakai data lokal.", e);
+    console.warn("Gagal sync dari Sheet:", e);
     loadLocal();
   }
 }
