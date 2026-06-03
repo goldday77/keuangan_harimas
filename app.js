@@ -5,7 +5,7 @@
 
 // ── CONFIG ──────────────────────────────────────────────
 // Ganti nilai GAS_URL dengan URL Web App Google Apps Script kamu
-const GAS_URL = "https://script.google.com/macros/s/AKfycbybgPrQp232c4qWYkeLeCX8u-m5Tx9MlrvUVrbCTjFxLjHd80shlAeUonMgCq0Ok-lS/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwO5VV482ep3nvsdGWOJ6KsPtuFHuTNvVSEqOJmvbG1HlBBLM2skNBFPwC4oc_qQEPt/exec";
 
 // ── KONSTANTA KATEGORI ──────────────────────────────────
 const KAT_PEMASUKAN = ["Gaji", "Tukin", "Uang Makan", "Lain-lain"];
