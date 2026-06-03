@@ -129,20 +129,14 @@ function finishSplash({ qInterval, barInterval, barEl }) {
 
 // ── GAS API ───────────────────────────────────────────────
 async function syncFromSheet() {
-  if (!GAS_URL || GAS_URL.includes("GANTI_DENGAN")) {
-    console.warn("URL GAS belum diisi!");
-    loadLocal();
-    return;
-  }
   try {
     const res  = await fetch(GAS_URL + "?action=getAll", { method: "GET" });
     const data = await res.json();
     if (data.ok) {
-      state.saldoRekening = data.saldoRekening || 0;
-      state.saldoCash     = data.saldoCash     || 0;
-      state.transaksi     = data.transaksi      || [];
-      state.budget        = data.budget         || {};
-      state.carryOver     = data.carryOver      || {};
+      state.saldoRekening = Number(data.saldoRekening) || 0;
+      state.saldoCash     = Number(data.saldoCash) || 0;
+      state.transaksi     = data.transaksi || [];
+      state.budget        = data.budget || {};
     }
     saveLocal();
   } catch(e) {
@@ -152,18 +146,16 @@ async function syncFromSheet() {
 }
 
 async function pushToSheet(payload) {
-  if (GAS_URL === "GANTI_DENGAN_URL_GAS_KAMU") {
+  try {
+    // Mode no-cors ditambahkan agar browser iPhone tidak memblokir data
+    await fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
     saveLocal();
     return { ok: true };
-  }
-  try {
-    const res  = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify(payload),
-      headers: { "Content-Type": "application/json" }
-    });
-    const data = await res.json();
-    return data;
   } catch(e) {
     console.warn("Push ke Sheet gagal:", e);
     saveLocal();
