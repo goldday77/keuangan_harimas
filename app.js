@@ -129,8 +129,8 @@ function finishSplash({ qInterval, barInterval, barEl }) {
 
 // ── GAS API ───────────────────────────────────────────────
 async function syncFromSheet() {
-  if (GAS_URL === "GANTI_DENGAN_URL_GAS_KAMU") {
-    // Mode offline / demo — muat dari localStorage
+  if (!GAS_URL || GAS_URL.includes("GANTI_DENGAN")) {
+    console.warn("URL GAS belum diisi!");
     loadLocal();
     return;
   }
